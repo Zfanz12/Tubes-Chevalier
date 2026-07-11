@@ -1,0 +1,18 @@
+services:
+  # Database Service MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: tubes_chevalier_db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_DATABASE: tubes_chevalier_db
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - dbdata:/var/lib/mysql
+
+volumes:
+  dbdata:
+    driver: local
