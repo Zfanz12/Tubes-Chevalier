@@ -1,10 +1,10 @@
-# Fisight - Backend API (Laravel 13)
+# Tubes Chevalier - Backend API (Laravel 13)
 
-Ini adalah folder backend untuk project **Fisight** (Sistem Identifikasi Kualitas Ikan untuk Distributor Perikanan).
+Ini adalah folder backend untuk project **Tubes Chevalier**.
 
 ---
 
-## 🛠️ Pilihan Setup Local Development
+## Pilihan Setup Local Development
 
 Lu bebas mau pake cara instan pake **Docker (sangat direkomendasikan)** biar ga perlu install database di laptop, atau tetep pake **Cara Klasik (Tanpa Docker)**. 
 
@@ -100,18 +100,18 @@ Gunakan cara ini kalau lu belum install Docker di laptop dan lebih milih pake My
 
 ---
 
-## 🧪 Menjalankan Unit Test Secara Lokal
+## Menjalankan Unit Test Secara Lokal
 
 Sebelum melakukan push ke GitHub, biasakan jalankan test lokal untuk memastikan tidak ada kode yang broken:
 ```bash
 php artisan test
 ```
 
-## 🚀 CI/CD Pipeline (GitHub Actions)
+## CI/CD Pipeline (GitHub Actions)
 
 Project backend ini sudah dilengkapi dengan CI/CD otomatis di file `.github/workflows/backend-ci.yml`. 
 Setiap kali ada `push` atau `pull_request` di subfolder `backend/` ini, runner GitHub Actions bakal:
-1. Setup PHP 8.3 & MySQL test database.
+1. Setup PHP 8.4 & MySQL test database.
 2. Install Composer dependencies.
 3. Menjalankan migrations & unit test (`php artisan test`).
 
