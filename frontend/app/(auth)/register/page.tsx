@@ -34,6 +34,7 @@ function GoogleIcon({ className = "w-5 h-5" }: { className?: string }) {
 }
 
 export default function LoginPage() {
+  const [namalengkap, setNamalengkap] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -68,7 +69,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-[480px] bg-[#F7F8F7] rounded-[28px] border-none shadow-2xl p-7 sm:p-10">
         <div>
           <h1 className="text-2xl sm:text-[30px] font-bold tracking-tight">
-            <span className="text-[#48C764]">Login</span>{" "}
+            <span className="text-[#48C764]">Sign Up</span>{" "}
             <span className="text-[#0D382A]">Harvesta</span>
           </h1>
           <p className="text-[#6B7280] text-xs sm:text-sm mt-2 leading-relaxed font-normal">
@@ -78,6 +79,20 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Email Field */}
+          <div className="space-y-1.5">
+            <Label htmlFor="namalengkap" className="text-xs sm:text-sm font-semibold text-gray-900">
+              Nama Lengkap
+            </Label>
+            <Input
+              id="namalengkap"
+              type="text"
+              placeholder="Masukkan nama lengkap"
+              value={namalengkap}
+              onChange={(e) => setNamalengkap(e.target.value)}
+              className="h-11 sm:h-12 rounded-xl bg-[#E6E9E6] border border-gray-200/60 px-4 text-sm text-gray-800 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-[#0D382A]/20 focus-visible:border-[#0D382A] shadow-none"
+              required
+            />
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-xs sm:text-sm font-semibold text-gray-900">
               Email
@@ -152,9 +167,9 @@ export default function LoginPage() {
         {/* Bottom Text */}
         <div className="text-center pt-1">
           <p className="text-xs sm:text-sm text-gray-500 font-normal">
-            Belum punya akun?{" "}
-            <Link href="/register" className="font-bold text-[#0D382A] hover:underline">
-              Sign Up
+            Sudah punya akun?{" "}
+            <Link href="/login" className="font-bold text-[#0D382A] hover:underline">
+              Login
             </Link>
           </p>
         </div>
