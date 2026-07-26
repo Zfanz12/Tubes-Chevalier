@@ -28,19 +28,45 @@ const pageTitles: Record<string, string> = {
 export default function Topbar() {
   const pathname = usePathname();
   const title = pageTitles[pathname] || "Produk";
+  const [currentDate, setCurrentDate] = React.useState<string>("");
+
+  React.useEffect(() => {
+    const formatted = new Date().toLocaleDateString("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    // Capitalize first letter of weekday and month if needed
+    setCurrentDate(formatted);
+  }, []);
 
   return (
-    <header className="bg-[#1B4332] text-white ml-8 px-8 pt-6 pb-6 rounded-bl-[36px] flex items-start justify-between shrink-0 shadow-sm transition-all duration-300">
-      <div>
-        <span className="text-emerald-100/80 text-sm font-medium block mb-1">
-          Rabu, 15 April 2026
+    <header className="bg-[#1B4332] text-white ml-8 px-8 pt-6 pb-6 rounded-bl-[36px] flex items-start justify-between shrink-0 shadow-sm transition-all duration-300 relative overflow-hidden">
+      {/* Subtle Low Poly Geometric Background Overlay */}
+      <div className="absolute inset-0 pointer-events-none opacity-15">
+        <svg className="w-full h-full object-cover" viewBox="0 0 1000 120" preserveAspectRatio="none">
+          <polygon points="0,0 250,0 150,80" fill="#2d5746" opacity="0.7" />
+          <polygon points="250,0 500,0 400,100" fill="#40916c" opacity="0.5" />
+          <polygon points="500,0 750,0 650,70" fill="#52b788" opacity="0.4" />
+          <polygon points="750,0 1000,0 850,120" fill="#74c69d" opacity="0.3" />
+          <polygon points="0,0 150,80 0,120" fill="#1b4332" opacity="0.8" />
+          <polygon points="150,80 400,100 250,120 0,120" fill="#2d5746" opacity="0.6" />
+          <polygon points="400,100 650,70 550,120 250,120" fill="#40916c" opacity="0.4" />
+          <polygon points="650,70 850,120 1000,120 550,120" fill="#52b788" opacity="0.3" />
+        </svg>
+      </div>
+
+      <div className="relative z-10">
+        <span className="text-emerald-100/80 text-sm font-medium block mb-1 capitalize drop-shadow-xs">
+          {currentDate || "Memuat tanggal..."}
         </span>
-        <h1 className="text-3xl font-bold tracking-tight text-white font-sans">
+        <h1 className="text-3xl font-bold tracking-tight text-white font-sans drop-shadow-xs">
           {title}
         </h1>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 relative z-10">
         <DropdownMenu>
           <DropdownMenuTrigger
             render={(props) => (
