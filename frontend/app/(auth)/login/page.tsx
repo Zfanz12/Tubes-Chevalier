@@ -38,17 +38,45 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
     console.log("Login submitted:", { email, password });
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Email atau password salah.");
+        return;
+      }
+
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user));
+        }
+        alert("Login Berhasil!");
+        window.location.href = "/dashboard";
+      }
+    } catch (err) {
+      alert("Gagal terhubung ke server backend. Pastikan server Laravel menyala.");
+    }
   };
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-hidden">
       {/* Background Image */}
       <Image
-        src="/bg4.jpg"
+        src="/bg-auth.jpg"
         alt="Background"
         fill
         priority
@@ -65,7 +93,7 @@ export default function LoginPage() {
       </Link>
 
       {/* Login Card */}
-      <Card className="w-full max-w-[480px] bg-[#F7F8F7] rounded-[28px] border-none shadow-2xl p-7 sm:p-10">
+      <Card className="w-full max-w-[480px] bg-[#F7F8F7] rounded-[28px] border-none shadow-2xl p-7 sm:p-10 space-y-6">
         <div>
           <h1 className="text-2xl sm:text-[30px] font-bold tracking-tight">
             <span className="text-[#48C764]">Login</span>{" "}
@@ -133,9 +161,9 @@ export default function LoginPage() {
         </form>
 
         {/* Divider */}
-        <div className="relative flex items-center justify-center">
+        <div className="relative flex items-center justify-center my-3 sm:my-4">
           <div className="w-full border-t border-gray-300/80" />
-          <span className="px-3 text-sm text-gray-400 font-medium bg-transparent">or</span>
+          <span className="px-3 text-xs text-gray-400 font-medium bg-transparent">or</span>
           <div className="w-full border-t border-gray-300/80" />
         </div>
 
