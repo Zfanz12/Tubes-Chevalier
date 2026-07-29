@@ -1,11 +1,23 @@
 package org.example.project.auth.presentation.register
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.example.project.core.component.AppButton
+import org.example.project.core.component.AppTextField
+import org.example.project.core.component.DividerWithText
+import org.example.project.core.component.GoogleButton
+import org.example.project.core.component.PasswordField
+import org.example.project.core.theme.AppColors
 
 @Composable
 fun RegisterScreen(
@@ -13,41 +25,148 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
+
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(state.isSuccess) {
-        if (state.isSuccess) onRegisterSuccess()
-    }
-
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Daftar Akun", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(24.dp))
-
-        OutlinedTextField(state.name, viewModel::onNameChange, label = { Text("Nama") }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(state.email, viewModel::onEmailChange, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(state.password, viewModel::onPasswordChange, label = { Text("Password") }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(state.passwordConfirmation, viewModel::onPasswordConfirmationChange, label = { Text("Konfirmasi Password") }, modifier = Modifier.fillMaxWidth())
-
-        state.errorMessage?.let {
-            Spacer(Modifier.height(8.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
-        }
-
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = viewModel::submit, enabled = !state.isLoading, modifier = Modifier.fillMaxWidth()) {
-            if (state.isLoading) CircularProgressIndicator(modifier = Modifier.size(18.dp)) else Text("Daftar")
-        }
-
-        Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onNavigateToLogin) {
-            Text("Sudah punya akun? Masuk")
+        if (state.isSuccess) {
+            onRegisterSuccess()
         }
     }
+
+    Scaffold { padding ->
+
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp),
+
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            Text(
+                text = "🌿",
+                style = MaterialTheme.typography.displaySmall
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "HARVESTA",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.Primary
+            )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Text(
+                text = "Buat Akun",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Daftar untuk mulai menggunakan Harvesta",
+                style = MaterialTheme.typography.bodyMedium,
+                color = AppColors.Subtitle
+            )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            AppTextField(
+                value = state.name,
+                onValueChange = viewModel::onNameChange,
+                label = "Nama Lengkap"
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            AppTextField(
+                value = state.email,
+                onValueChange = viewModel::onEmailChange,
+                label = "Email"
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            PasswordField(
+                value = state.password,
+                onValueChange = viewModel::onPasswordChange,
+                label = "Password"
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            PasswordField(
+                value = state.passwordConfirmation,
+                onValueChange = viewModel::onPasswordConfirmationChange,
+                label = "Konfirmasi Password"
+            )
+
+            state.errorMessage?.let {
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error
+                )
+
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            AppButton(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+
+                text = "DAFTAR",
+
+                loading = state.isLoading,
+
+                onClick = {
+                    viewModel.submit()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            DividerWithText()
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            GoogleButton()
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Text("Sudah punya akun?")
+
+                TextButton(
+                    onClick = onNavigateToLogin
+                ) {
+
+                    Text("Masuk")
+
+                }
+
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+        }
+
+    }
+
 }
