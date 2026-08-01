@@ -14,6 +14,11 @@ import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { toast } from "sonner";
 
+// Di luar komponen agar tidak di-recreate setiap render
+const WaveIcon = () => (
+  <span className="animate-wave text-xl leading-none">👋</span>
+);
+
 function GoogleIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24">
@@ -47,10 +52,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const WaveIcon = () => (
-  <span className="animate-wave text-xl leading-none">👋</span>
-  );
-  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);

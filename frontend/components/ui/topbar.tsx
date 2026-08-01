@@ -27,6 +27,7 @@ import {
 import { useAuthStore } from "@/lib/useAuthStore";
 import { apiFetch } from "@/lib/api";
 
+// ── Animated wave icon untuk toast ─────────────────────────────────────────
 const WaveIcon = () => (
   <span className="animate-wave text-xl leading-none">👋</span>
 );
@@ -47,6 +48,7 @@ export default function Topbar() {
   const router = useRouter();
   const title = pageTitles[pathname] || "Dashboard";
 
+  // ── Auth state dari store (versi kita) ─────────────────────────────────
   const user = useAuthStore((state) => state.user);
   const token = useAuthStore((state) => state.token);
   const clearAuth = useAuthStore((state) => state.clearAuth);
@@ -54,20 +56,29 @@ export default function Topbar() {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Get initials for avatar fallback
-  const getInitials = (name: string) => {
-    return name
+  // ── Reactive date pakai useEffect (versi teman — lebih aman untuk SSR) ─
+  const [currentDate, setCurrentDate] = useState<string>("");
+  React.useEffect(() => {
+    const formatted = new Date().toLocaleDateString("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    setCurrentDate(formatted);
+  }, []);
+
+  const getInitials = (name: string) =>
+    name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      // Panggil API logout untuk revoke token
       await apiFetch("/logout", {
         method: "POST",
         token: token ?? undefined,
@@ -85,28 +96,39 @@ export default function Topbar() {
     }
   };
 
-  // Format current date in Indonesian
-  const today = new Date();
-  const formattedDate = today.toLocaleDateString("id-ID", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
   return (
     <>
-      <header className="bg-[#1B4332] text-white ml-8 px-8 pt-6 pb-6 rounded-bl-[36px] flex items-start justify-between shrink-0 shadow-sm transition-all duration-300">
-        <div>
-          <span className="text-emerald-100/80 text-sm font-medium block mb-1 capitalize">
-            {formattedDate}
+      <header className="bg-[#1B4332] text-white ml-8 px-8 pt-4 pb-4 rounded-bl-[36px] flex items-start justify-between shrink-0 shadow-sm transition-all duration-300 relative overflow-hidden">
+        {/* Low Poly Geometric Background (versi teman) */}
+        <div className="absolute inset-0 pointer-events-none opacity-15">
+          <svg
+            className="w-full h-full object-cover"
+            viewBox="0 0 1000 120"
+            preserveAspectRatio="none"
+          >
+            <polygon points="0,0 250,0 150,80" fill="#2d5746" opacity="0.7" />
+            <polygon points="250,0 500,0 400,100" fill="#40916c" opacity="0.5" />
+            <polygon points="500,0 750,0 650,70" fill="#52b788" opacity="0.4" />
+            <polygon points="750,0 1000,0 850,120" fill="#74c69d" opacity="0.3" />
+            <polygon points="0,0 150,80 0,120" fill="#1b4332" opacity="0.8" />
+            <polygon points="150,80 400,100 250,120 0,120" fill="#2d5746" opacity="0.6" />
+            <polygon points="400,100 650,70 550,120 250,120" fill="#40916c" opacity="0.4" />
+            <polygon points="650,70 850,120 1000,120 550,120" fill="#52b788" opacity="0.3" />
+          </svg>
+        </div>
+
+        {/* Date & Page Title */}
+        <div className="relative z-10">
+          <span className="text-emerald-100/80 text-sm   font-medium block mb-1 capitalize drop-shadow-xs">
+            {currentDate || "Memuat tanggal..."}
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-white font-sans">
+          <h1 className="text-2xl font-bold tracking-tight text-white font-sans drop-shadow-xs">
             {title}
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* User Dropdown */}
+        <div className="flex items-center gap-3 relative z-10">
           <DropdownMenu>
             <DropdownMenuTrigger
               render={(props) => (
@@ -120,7 +142,6 @@ export default function Topbar() {
                       {user ? getInitials(user.name) : "??"}
                     </AvatarFallback>
                   </Avatar>
-
                   <span className="text-sm font-semibold text-white tracking-wide">
                     {user?.name ?? "User"}
                   </span>
@@ -145,7 +166,6 @@ export default function Topbar() {
                   <User className="w-4 h-4" />
                   Profil Saya
                 </DropdownMenuItem>
-
                 <DropdownMenuItem>
                   <Settings className="w-4 h-4" />
                   Pengaturan
@@ -172,13 +192,12 @@ export default function Topbar() {
           <AlertDialogHeader>
             <AlertDialogTitle>Konfirmasi Keluar</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah kamu yakin ingin keluar dari akun ini? Kamu perlu login kembali untuk mengakses dashboard.
+              Apakah kamu yakin ingin keluar dari akun ini? Kamu perlu login
+              kembali untuk mengakses dashboard.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoggingOut}>
-              Batal
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={isLoggingOut}>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLogout}
               disabled={isLoggingOut}

@@ -85,10 +85,6 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* ── Page Header ── */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Selamat datang kembali, Ahmad! Berikut ringkasan hari ini.</p>
-      </div>
 
       {/* ── Stat Cards ── */}
       <div className="grid gap-5 md:grid-cols-3">
