@@ -152,24 +152,17 @@ export default function DashboardPage() {
               <CardTitle className="text-base font-bold text-gray-800">
                 Grafik Penjualan
               </CardTitle>
-              <div className="flex gap-1 bg-emerald-50/50 p-1 rounded-full border border-emerald-100">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="px-3 h-7 rounded-full text-xs font-medium text-gray-500 hover:text-emerald-700"
-                >
+              <div className="bg-[#eefcf4] p-1 rounded-full border border-[#c6f0d8] inline-flex items-center gap-1">
+                <button className="px-3.5 py-1 text-xs font-semibold text-gray-500 hover:text-gray-900 rounded-full transition cursor-pointer">
                   30 hari
-                </Button>
-                <Button
-                  size="sm"
-                  className="px-3 h-7 rounded-full text-xs font-semibold bg-[#1B4332] text-white hover:bg-[#05543c] shadow-[0_4px_20px_rgba(3,59,42,0.06)]"
-                >
+                </button>
+                <button className="px-4 py-1 text-xs font-bold bg-[#1B4332] text-white rounded-full shadow-2xs transition cursor-pointer">
                   7 hari
-                </Button>
+                </button>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2 pb-6 px-6">
             <div className="h-56 w-full relative">
               <svg viewBox="0 0 500 200" className="w-full h-full">
                 <defs>
@@ -178,17 +171,17 @@ export default function DashboardPage() {
                     <stop offset="100%" stopColor="#1B4332" stopOpacity="0" />
                   </linearGradient>
                 </defs>
-                <line x1="0" y1="20" x2="500" y2="20" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="60" x2="500" y2="60" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="100" x2="500" y2="100" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="140" x2="500" y2="140" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="180" x2="500" y2="180" stroke="#e2e8f0" strokeWidth="1.5" />
+                <line x1="30" y1="20" x2="470" y2="20" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="30" y1="60" x2="470" y2="60" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="30" y1="100" x2="470" y2="100" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="30" y1="140" x2="470" y2="140" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="30" y1="180" x2="470" y2="180" stroke="#e2e8f0" strokeWidth="1.5" />
                 <path
-                  d="M 10 160 C 60 140, 100 130, 150 140 C 200 150, 250 110, 300 110 C 350 110, 400 135, 450 120 C 475 110, 490 125, 500 125 L 500 180 L 10 180 Z"
+                  d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 135, 470 120 L 470 180 L 30 180 Z"
                   fill="url(#chartGradient)"
                 />
                 <path
-                  d="M 10 160 C 60 140, 100 130, 150 140 C 200 150, 250 110, 300 110 C 350 110, 400 135, 450 120 C 475 110, 490 125, 500 125"
+                  d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 135, 470 120"
                   fill="none"
                   stroke="#1B4332"
                   strokeWidth="3"
@@ -196,12 +189,12 @@ export default function DashboardPage() {
                 />
                 {/* Data points */}
                 {[
-                  [10, 160], [150, 140], [300, 110], [450, 120], [500, 125]
+                  [30, 160], [170, 140], [320, 110], [420, 125], [470, 120]
                 ].map(([x, y], i) => (
                   <circle key={i} cx={x} cy={y} r="4" fill="#1B4332" stroke="white" strokeWidth="2" />
                 ))}
               </svg>
-              <div className="flex justify-between text-[11px] text-gray-400 font-semibold px-2 mt-1">
+              <div className="flex justify-between text-[11px] text-gray-400 font-semibold px-6 mt-2">
                 {["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((d) => (
                   <span key={d}>{d}</span>
                 ))}
