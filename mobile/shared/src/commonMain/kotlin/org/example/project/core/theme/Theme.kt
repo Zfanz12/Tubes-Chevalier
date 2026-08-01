@@ -8,7 +8,7 @@ private val ColorScheme = lightColorScheme(
 
     primary = AppColors.Primary,
 
-    secondary = AppColors.PrimaryLight,
+    secondary = AppColors.Secondary,
 
     background = AppColors.Background,
 

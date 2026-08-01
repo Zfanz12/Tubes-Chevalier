@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.example.project.auth.domain.usecase.RegisterUseCase
 import org.example.project.core.network.AppError
-
 class RegisterViewModel(private val registerUseCase: RegisterUseCase) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RegisterUiState())
@@ -17,13 +16,13 @@ class RegisterViewModel(private val registerUseCase: RegisterUseCase) : ViewMode
     fun onNameChange(v: String) { _uiState.value = _uiState.value.copy(name = v, errorMessage = null) }
     fun onEmailChange(v: String) { _uiState.value = _uiState.value.copy(email = v, errorMessage = null) }
     fun onPasswordChange(v: String) { _uiState.value = _uiState.value.copy(password = v, errorMessage = null) }
-    fun onPasswordConfirmationChange(v: String) { _uiState.value = _uiState.value.copy(passwordConfirmation = v, errorMessage = null) }
 
     fun submit() {
         val state = _uiState.value
         viewModelScope.launch {
             _uiState.value = state.copy(isLoading = true, errorMessage = null)
-            val result = registerUseCase(state.name, state.email, state.password, state.passwordConfirmation)
+            // password_confirmation dikirim = password, karena UI tidak punya field terpisah
+            val result = registerUseCase(state.name, state.email, state.password, state.password)
             result.onSuccess {
                 _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true)
             }.onFailure { error ->

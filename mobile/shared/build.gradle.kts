@@ -58,6 +58,8 @@ kotlin {
             implementation(libs.ktor.client.logging)
             implementation(libs.ktor.client.auth)
             implementation(libs.kotlinx.serialization.json)
+            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
+            implementation(compose.components.uiToolingPreview)
         }
         val iosMain by getting {
             dependencies {
@@ -74,6 +76,9 @@ kotlin {
     }
 }
 
+fun debugImplementation(uiTooling: String) {}
+
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
+    debugImplementation(compose.uiTooling)
 }

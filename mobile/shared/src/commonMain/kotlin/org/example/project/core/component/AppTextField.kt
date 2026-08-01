@@ -2,11 +2,13 @@ package org.example.project.core.component
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.graphics.Shape
 
 @Composable
 fun AppTextField(
@@ -18,6 +20,7 @@ fun AppTextField(
     readOnly: Boolean = false,
     singleLine: Boolean = true,
     isError: Boolean = false,
+    shape: Shape = OutlinedTextFieldDefaults.shape,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
@@ -33,6 +36,7 @@ fun AppTextField(
         readOnly = readOnly,
         singleLine = singleLine,
         isError = isError,
+        shape = shape,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions
     )

@@ -1,229 +1,103 @@
 package org.example.project.auth.presentation.login
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import org.example.project.core.component.AppButton
-import org.example.project.core.component.AppTextField
-import org.example.project.core.component.DividerWithText
-import org.example.project.core.component.GoogleButton
-import org.example.project.core.component.PasswordField
+import org.example.project.auth.domain.usecase.LoginUseCase
+import org.example.project.core.component.*
+import org.example.project.core.preview.FakeAuthRepository
 import org.example.project.core.theme.AppColors
+import org.example.project.core.theme.AppSpacing
+import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onBackClick: () -> Unit = {}
 ) {
-
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(state.isSuccess) {
-        if (state.isSuccess) {
-            onLoginSuccess()
+        if (state.isSuccess) onLoginSuccess()
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = AppSpacing.lg, vertical = AppSpacing.lg)
+    ) {
+        BackButton(onClick = onBackClick)
+
+        Spacer(Modifier.height(AppSpacing.xl))
+
+        // Header -- sesuai Figma: "Login Harvesta", TANPA logo/branding besar, TANPA "Lupa Password?"
+        Text("Login Harvesta", style = MaterialTheme.typography.headlineSmall, color = AppColors.TextDark)
+        Spacer(Modifier.height(AppSpacing.sm))
+        Text(
+            "Masuk untuk mengakses akun dan menikmati produk segar langsung dari petani.",
+            style = MaterialTheme.typography.bodySmall,
+            color = AppColors.TextMuted
+        )
+
+        Spacer(Modifier.height(AppSpacing.lg))
+
+        AppTextField(value = state.email, onValueChange = viewModel::onEmailChange, label = "Email")
+        Spacer(Modifier.height(AppSpacing.md))
+        PasswordField(value = state.password, onValueChange = viewModel::onPasswordChange, label = "Password")
+
+        state.errorMessage?.let {
+            Spacer(Modifier.height(AppSpacing.sm))
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+
+        Spacer(Modifier.height(AppSpacing.lg))
+
+        AppButton(text = "Login", loading = state.isLoading, onClick = viewModel::submit)
+
+        Spacer(Modifier.height(AppSpacing.md))
+        DividerWithText(text = "or")
+        Spacer(Modifier.height(AppSpacing.md))
+
+        GoogleButton(text = "Sign In dengan Google")
+
+        Spacer(Modifier.weight(1f))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            Text("Belum punya akun? ", color = AppColors.TextMuted, style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onNavigateToRegister) {
+                Text("Sign Up", color = AppColors.Primary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun LoginScreenPreview() {
+    var loggedIn by remember { mutableStateOf(false) }
+    val viewModel = remember {
+        LoginViewModel(LoginUseCase(FakeAuthRepository())).apply {
+            onEmailChange("preview@email.com")
+            onPasswordChange("password123")
         }
     }
 
-    Scaffold {
-
-            padding ->
-
-        Column(
-
-            modifier = Modifier
-
-                .padding(padding)
-
-                .fillMaxSize()
-
-                .verticalScroll(rememberScrollState())
-
-                .padding(horizontal = 24.dp),
-
-            horizontalAlignment = Alignment.CenterHorizontally
-
-        ) {
-
-            Spacer(Modifier.height(56.dp))
-
-            Text(
-
-                text = "🌿",
-
-                style = MaterialTheme.typography.displaySmall
-
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Text(
-
-                text = "HARVESTA",
-
-                style = MaterialTheme.typography.headlineMedium,
-
-                fontWeight = FontWeight.Bold,
-
-                color = AppColors.Primary
-
-            )
-
-            Spacer(Modifier.height(32.dp))
-
-            Text(
-
-                "Selamat Datang",
-
-                style = MaterialTheme.typography.headlineSmall,
-
-                fontWeight = FontWeight.Bold
-
-            )
-
-            Spacer(Modifier.height(6.dp))
-
-            Text(
-
-                "Masuk untuk melanjutkan",
-
-                style = MaterialTheme.typography.bodyMedium,
-
-                color = AppColors.Subtitle
-
-            )
-
-            Spacer(Modifier.height(32.dp))
-
-            AppTextField(
-
-                value = state.email,
-
-                onValueChange = viewModel::onEmailChange,
-
-                label = "Email"
-
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            PasswordField(
-
-                value = state.password,
-
-                onValueChange = viewModel::onPasswordChange
-
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-
-                modifier = Modifier.fillMaxWidth(),
-
-                horizontalArrangement = Arrangement.End
-
-            ) {
-
-                TextButton(
-
-                    onClick = { }
-
-                ) {
-
-                    Text("Lupa Password?")
-
-                }
-
+    MaterialTheme {
+        if (loggedIn) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("✅ Login berhasil (preview)")
             }
-
-            state.errorMessage?.let {
-
-                Spacer(Modifier.height(8.dp))
-
-                Text(
-
-                    text = it,
-
-                    color = MaterialTheme.colorScheme.error
-
-                )
-
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            AppButton(
-
-                modifier = Modifier
-
-                    .fillMaxWidth()
-
-                    .height(54.dp),
-
-                text = "LOGIN",
-
-                loading = state.isLoading,
-
-                onClick = {
-
-                    viewModel.submit()
-
-                }
-
+        } else {
+            LoginScreen(
+                viewModel = viewModel,
+                onLoginSuccess = { loggedIn = true },
+                onNavigateToRegister = {}
             )
-
-            Spacer(Modifier.height(24.dp))
-
-            DividerWithText()
-
-            Spacer(Modifier.height(24.dp))
-
-            GoogleButton()
-
-            Spacer(Modifier.height(24.dp))
-
-            Row(
-
-                verticalAlignment = Alignment.CenterVertically
-
-            ) {
-
-                Text(
-
-                    "Belum punya akun?"
-
-                )
-
-                TextButton(
-
-                    onClick = onNavigateToRegister
-
-                ) {
-
-                    Text(
-
-                        "Daftar"
-
-                    )
-
-                }
-
-            }
-
-            Spacer(Modifier.height(32.dp))
-
         }
-
     }
-
 }
