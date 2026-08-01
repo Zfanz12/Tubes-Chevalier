@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { TestToastButton } from "@/components/ui/test-toast-button";
 
 // ── Stat Cards ─────────────────────────────────────────────
 const statCards = [
@@ -362,6 +363,9 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Tombol Test Toast - floating bottom right */}
+      <TestToastButton />
     </div>
   );
 }

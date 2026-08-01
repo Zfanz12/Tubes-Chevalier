@@ -3,12 +3,16 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronLeft, Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { apiFetch } from "@/lib/api";
+import { useAuthStore } from "@/lib/useAuthStore";
+import { toast } from "sonner";
 
 function GoogleIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
@@ -34,14 +38,46 @@ function GoogleIcon({ className = "w-5 h-5" }: { className?: string }) {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
+  const setAuth = useAuthStore((state) => state.setAuth);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const WaveIcon = () => (
+  <span className="animate-wave text-xl leading-none">👋</span>
+  );
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log("Login submitted:", { email, password });
+    setErrorMsg(null);
+    setIsLoading(true);
+
+    try {
+      const res = await apiFetch<{ user: { id: number; name: string; email: string; role: "petani" | "umkm" }; token: string }>(
+        "/login",
+        {
+          method: "POST",
+          body: { email, password },
+        }
+      );  
+
+      setAuth(res.user, res.token);
+      toast.success(`Selamat datang, ${res.user.name}`, {
+        icon: <WaveIcon />,
+        duration: 4000,
+      });
+
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      setErrorMsg(error?.message ?? "Terjadi kesalahan. Coba lagi.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -77,6 +113,12 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Error Message */}
+          {errorMsg && (
+            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600 font-medium">
+              {errorMsg}
+            </div>
+          )}
           {/* Email Field */}
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-xs sm:text-sm font-semibold text-gray-900">
@@ -126,9 +168,11 @@ export default function LoginPage() {
           {/* Submit Button */}
           <Button
             type="submit"
-            className="w-full h-11 sm:h-12 mt-2 rounded-full bg-[#0D382A] hover:bg-[#08261C] text-white font-semibold text-sm sm:text-base shadow-sm transition-all"
+            disabled={isLoading}
+            className="w-full h-11 sm:h-12 mt-2 rounded-full bg-[#0D382A] hover:bg-[#08261C] text-white font-semibold text-sm sm:text-base shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Login
+            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isLoading ? "Memproses..." : "Login"}
           </Button>
         </form>
 
