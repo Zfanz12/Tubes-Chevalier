@@ -47,7 +47,7 @@ export default function LoginPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
@@ -123,9 +123,19 @@ export default function LoginPage() {
 
           {/* Password Field */}
           <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-xs sm:text-sm font-semibold text-gray-900">
-              Password
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-xs sm:text-sm font-semibold text-gray-900">
+                Password
+              </Label>
+              {/* Tombol teks alternatif buat toggle intip password */}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-[11px] sm:text-xs text-[#0D382A] font-medium hover:underline focus:outline-none"
+              >
+                {showPassword ? "Sembunyikan" : "Tampilkan"}
+              </button>
+            </div>
             <div className="relative">
               <Input
                 id="password"

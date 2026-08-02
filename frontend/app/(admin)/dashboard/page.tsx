@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { TestToastButton } from "@/components/ui/test-toast-button";
 
 // ── Stat Cards ─────────────────────────────────────────────
 const statCards = [
@@ -84,27 +85,21 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* ── Page Header ── */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Selamat datang kembali, Ahmad! Berikut ringkasan hari ini.</p>
-      </div>
 
       {/* ── Stat Cards ── */}
       <div className="grid gap-5 md:grid-cols-3">
         {statCards.map((card) => (
           <Card
             key={card.label}
-            className={`border-0 shadow-sm min-h-[140px] ${
-              card.dark
-                ? "bg-[#05402e] text-white"
-                : "bg-white border border-emerald-100"
-            }`}
+            className={`rounded-2xl shadow-[0_4px_20px_rgba(3,59,42,0.06)] min-h-[140px] ${card.dark
+                ? "bg-[#1B4332] border border-[#06543c] text-white"
+                : "bg-white border border-emerald-300"
+              }`}
           >
             <CardHeader className="pb-2">
               <CardTitle
-                className={`text-sm font-medium ${
-                  card.dark ? "text-emerald-100/80" : "text-gray-500"
-                }`}
+                className={`text-sm font-medium ${card.dark ? "text-emerald-100/80" : "text-gray-500"
+                  }`}
               >
                 {card.label}
               </CardTitle>
@@ -112,9 +107,8 @@ export default function DashboardPage() {
             <CardContent>
               <div className="flex items-center gap-2">
                 <p
-                  className={`text-3xl font-bold ${
-                    card.dark ? "text-white" : "text-gray-900"
-                  }`}
+                  className={`text-3xl font-bold ${card.dark ? "text-white" : "text-gray-900"
+                    }`}
                 >
                   {card.value}
                 </p>
@@ -122,11 +116,10 @@ export default function DashboardPage() {
               </div>
               <div className="mt-3 flex items-center gap-2">
                 <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                    card.dark
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${card.dark
                       ? "bg-[#10b981]/20 text-[#10b981]"
                       : "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                  }`}
+                    }`}
                 >
                   {card.trend === "up" ? (
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -136,9 +129,8 @@ export default function DashboardPage() {
                   {card.change}
                 </span>
                 <span
-                  className={`text-xs ${
-                    card.dark ? "text-emerald-100/60" : "text-gray-400"
-                  }`}
+                  className={`text-xs ${card.dark ? "text-emerald-100/60" : "text-gray-400"
+                    }`}
                 >
                   {card.note}
                 </span>
@@ -151,62 +143,55 @@ export default function DashboardPage() {
       {/* ── Chart & Order Status ── */}
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Grafik Penjualan */}
-        <Card className="bg-white border border-emerald-100 shadow-sm lg:col-span-2">
+        <Card className="bg-white rounded-2xl border border-emerald-300 shadow-[0_4px_20px_rgba(3,59,42,0.06)] lg:col-span-2">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold text-gray-800">
                 Grafik Penjualan
               </CardTitle>
-              <div className="flex gap-1 bg-emerald-50/50 p-1 rounded-full border border-emerald-100">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="px-3 h-7 rounded-full text-xs font-medium text-gray-500 hover:text-emerald-700"
-                >
+              <div className="bg-[#eefcf4] p-1 rounded-full border border-[#c6f0d8] inline-flex items-center gap-1">
+                <button className="px-3.5 py-1 text-xs font-semibold text-gray-500 hover:text-gray-900 rounded-full transition cursor-pointer">
                   30 hari
-                </Button>
-                <Button
-                  size="sm"
-                  className="px-3 h-7 rounded-full text-xs font-semibold bg-[#05402e] text-white hover:bg-[#032e21] shadow-sm"
-                >
+                </button>
+                <button className="px-4 py-1 text-xs font-bold bg-[#1B4332] text-white rounded-full shadow-2xs transition cursor-pointer">
                   7 hari
-                </Button>
+                </button>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2 pb-6 px-6">
             <div className="h-56 w-full relative">
               <svg viewBox="0 0 500 200" className="w-full h-full">
                 <defs>
                   <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#05402e" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#05402e" stopOpacity="0" />
+                    <stop offset="0%" stopColor="#1B4332" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#1B4332" stopOpacity="0" />
                   </linearGradient>
                 </defs>
-                <line x1="0" y1="20" x2="500" y2="20" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="60" x2="500" y2="60" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="100" x2="500" y2="100" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="140" x2="500" y2="140" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="180" x2="500" y2="180" stroke="#e2e8f0" strokeWidth="1.5" />
+                <line x1="30" y1="20" x2="470" y2="20" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="30" y1="60" x2="470" y2="60" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="30" y1="100" x2="470" y2="100" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="30" y1="140" x2="470" y2="140" stroke="#f1f5f9" strokeWidth="1" />
+                <line x1="30" y1="180" x2="470" y2="180" stroke="#e2e8f0" strokeWidth="1.5" />
                 <path
-                  d="M 10 160 C 60 140, 100 130, 150 140 C 200 150, 250 110, 300 110 C 350 110, 400 135, 450 120 C 475 110, 490 125, 500 125 L 500 180 L 10 180 Z"
+                  d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 135, 470 120 L 470 180 L 30 180 Z"
                   fill="url(#chartGradient)"
                 />
                 <path
-                  d="M 10 160 C 60 140, 100 130, 150 140 C 200 150, 250 110, 300 110 C 350 110, 400 135, 450 120 C 475 110, 490 125, 500 125"
+                  d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 135, 470 120"
                   fill="none"
-                  stroke="#05402e"
+                  stroke="#1B4332"
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
                 {/* Data points */}
                 {[
-                  [10, 160], [150, 140], [300, 110], [450, 120], [500, 125]
+                  [30, 160], [170, 140], [320, 110], [420, 125], [470, 120]
                 ].map(([x, y], i) => (
-                  <circle key={i} cx={x} cy={y} r="4" fill="#05402e" stroke="white" strokeWidth="2" />
+                  <circle key={i} cx={x} cy={y} r="4" fill="#1B4332" stroke="white" strokeWidth="2" />
                 ))}
               </svg>
-              <div className="flex justify-between text-[11px] text-gray-400 font-semibold px-2 mt-1">
+              <div className="flex justify-between text-[11px] text-gray-400 font-semibold px-6 mt-2">
                 {["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((d) => (
                   <span key={d}>{d}</span>
                 ))}
@@ -216,7 +201,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Status Pesanan */}
-        <Card className="bg-white border border-emerald-100 shadow-sm">
+        <Card className="bg-white rounded-2xl border border-emerald-300 shadow-[0_4px_20px_rgba(3,59,42,0.06)]">
           <CardHeader className="pb-4">
             <CardTitle className="text-base font-bold text-gray-800">
               Status Pesanan
@@ -241,7 +226,7 @@ export default function DashboardPage() {
       {/* ── Stock Alert & Harvest ── */}
       <div className="grid gap-5 md:grid-cols-2">
         {/* Stok Hampir Habis */}
-        <Card className="bg-white border border-emerald-100 shadow-sm">
+        <Card className="bg-white rounded-2xl border border-emerald-300 shadow-[0_4px_20px_rgba(3,59,42,0.06)]">
           <CardHeader className="pb-4">
             <CardTitle className="text-base font-bold text-gray-800">
               Stok Hampir Habis
@@ -252,34 +237,31 @@ export default function DashboardPage() {
               {lowStockItems.map((item) => (
                 <div
                   key={item.name}
-                  className={`flex items-center justify-between p-3.5 rounded-xl ${
-                    item.name === "Kangkung"
+                  className={`flex items-center justify-between p-3.5 rounded-xl ${item.name === "Kangkung"
                       ? "bg-red-50 border border-red-100"
                       : item.name === "Sawi Putih"
-                      ? "bg-gray-50 border border-gray-100"
-                      : "bg-emerald-50/60 border border-emerald-100/60"
-                  }`}
+                        ? "bg-gray-50 border border-gray-100"
+                        : "bg-emerald-50/60 border border-emerald-300"
+                    }`}
                 >
                   <span
-                    className={`font-medium text-sm ${
-                      item.name === "Kangkung"
+                    className={`font-medium text-sm ${item.name === "Kangkung"
                         ? "text-red-700"
                         : item.name === "Sawi Putih"
-                        ? "text-gray-700"
-                        : "text-emerald-700"
-                    }`}
+                          ? "text-gray-700"
+                          : "text-emerald-700"
+                      }`}
                   >
                     {item.name}
                   </span>
                   <Badge
                     variant="outline"
-                    className={`font-bold text-sm ${
-                      item.name === "Kangkung"
+                    className={`font-bold text-sm ${item.name === "Kangkung"
                         ? "border-red-200 text-red-700 bg-white"
                         : item.name === "Sawi Putih"
-                        ? "border-gray-200 text-gray-700 bg-white"
-                        : "border-emerald-200 text-emerald-700 bg-white"
-                    }`}
+                          ? "border-gray-200 text-gray-700 bg-white"
+                          : "border-emerald-200 text-emerald-700 bg-white"
+                      }`}
                   >
                     {item.amount}
                   </Badge>
@@ -290,7 +272,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Panen Hari Ini */}
-        <Card className="bg-white border border-emerald-100 shadow-sm">
+        <Card className="bg-white rounded-2xl border border-emerald-300 shadow-[0_4px_20px_rgba(3,59,42,0.06)]">
           <CardHeader className="pb-4">
             <CardTitle className="text-base font-bold text-gray-800">
               Panen Hari Ini
@@ -312,7 +294,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Recent Transactions ── */}
-      <Card className="bg-white border border-emerald-100 shadow-sm overflow-hidden">
+      <Card className="bg-white rounded-2xl border border-emerald-300 shadow-[0_4px_20px_rgba(3,59,42,0.06)] overflow-hidden">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-bold text-gray-800">
@@ -320,7 +302,7 @@ export default function DashboardPage() {
             </CardTitle>
             <Button
               variant="link"
-              className="text-[#05402e] hover:text-[#032e21] font-bold text-sm p-0 h-auto"
+              className="text-[#1B4332] hover:text-[#032e21] font-bold text-sm p-0 h-auto"
             >
               Lihat semua
               <ChevronRight className="w-4 h-4 ml-1" />
@@ -358,7 +340,7 @@ export default function DashboardPage() {
                     <td className="py-4 px-6 text-right">
                       <Button
                         size="sm"
-                        className="bg-[#05402e] hover:bg-[#032e21] text-white text-xs font-semibold rounded-xl h-8"
+                        className="bg-[#1B4332] hover:bg-[#032e21] text-white text-xs font-semibold rounded-xl h-8"
                       >
                         Lihat detail
                       </Button>
@@ -370,6 +352,9 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Tombol Test Toast - floating bottom right */}
+      <TestToastButton />
     </div>
   );
 }
