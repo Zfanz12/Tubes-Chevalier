@@ -18,27 +18,26 @@ class AuthTest extends TestCase
     {
         $response = $this->postJson('/api/register', [
             'name' => 'John Doe',
-            'email' => 'john@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'no_hp' => '081234567890',
+            'role' => 'umkm'
         ]);
 
         $response->assertStatus(201)
             ->assertJsonStructure([
                 'message',
-                'access_token',
-                'token_type',
                 'user' => [
                     'id',
                     'name',
-                    'email',
+                    'no_hp',
+                    'role',
                     'created_at',
                     'updated_at'
-                ]
+                ],
+                'otp_preview'
             ]);
 
         $this->assertDatabaseHas('users', [
-            'email' => 'john@example.com'
+            'no_hp' => '081234567890'
         ]);
     }
 
@@ -49,9 +48,8 @@ class AuthTest extends TestCase
     {
         $response = $this->postJson('/api/register', [
             'name' => '',
-            'email' => 'invalid-email',
-            'password' => 'short',
-            'password_confirmation' => 'different',
+            'no_hp' => '',
+            'role' => 'invalid-role',
         ]);
 
         $response->assertStatus(422)
@@ -59,26 +57,53 @@ class AuthTest extends TestCase
                 'message',
                 'errors' => [
                     'name',
-                    'email',
-                    'password'
+                    'no_hp',
+                    'role'
                 ]
             ]);
     }
 
     /**
-     * Test user login successfully.
+     * Test request OTP.
      */
-    public function test_user_can_login(): void
+    public function test_user_can_request_otp(): void
     {
         $user = User::create([
             'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
-            'password' => Hash::make('secret123')
+            'no_hp' => '08987654321',
+            'role' => 'umkm'
+        ]);
+
+        $response = $this->postJson('/api/send-otp', [
+            'no_hp' => '08987654321'
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'message',
+                'no_hp',
+                'otp_preview'
+            ]);
+
+        $this->assertNotNull($user->fresh()->otp_code);
+    }
+
+    /**
+     * Test user login successfully via OTP.
+     */
+    public function test_user_can_login_via_otp(): void
+    {
+        $user = User::create([
+            'name' => 'Jane Doe',
+            'no_hp' => '08987654321',
+            'role' => 'umkm',
+            'otp_code' => '123456',
+            'otp_expires_at' => now()->addMinutes(5)
         ]);
 
         $response = $this->postJson('/api/login', [
-            'email' => 'jane@example.com',
-            'password' => 'secret123'
+            'no_hp' => '08987654321',
+            'otp' => '123456'
         ]);
 
         $response->assertStatus(200)
@@ -91,24 +116,26 @@ class AuthTest extends TestCase
     }
 
     /**
-     * Test user login with wrong credentials.
+     * Test user login with wrong OTP.
      */
-    public function test_user_cannot_login_with_wrong_password(): void
+    public function test_user_cannot_login_with_wrong_otp(): void
     {
         $user = User::create([
             'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
-            'password' => Hash::make('secret123')
+            'no_hp' => '08987654321',
+            'role' => 'umkm',
+            'otp_code' => '123456',
+            'otp_expires_at' => now()->addMinutes(5)
         ]);
 
         $response = $this->postJson('/api/login', [
-            'email' => 'jane@example.com',
-            'password' => 'wrongpassword'
+            'no_hp' => '08987654321',
+            'otp' => '654321'
         ]);
 
         $response->assertStatus(401)
             ->assertJsonFragment([
-                'message' => 'Kredensial salah'
+                'message' => 'Kode OTP salah'
             ]);
     }
 
@@ -119,8 +146,8 @@ class AuthTest extends TestCase
     {
         $user = User::create([
             'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
-            'password' => Hash::make('secret123')
+            'no_hp' => '08987654321',
+            'role' => 'umkm'
         ]);
 
         $token = $user->createToken('test_token')->plainTextToken;
