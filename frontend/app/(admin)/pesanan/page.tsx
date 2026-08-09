@@ -459,8 +459,8 @@ export default function PesananPage() {
                         {item.status}
                       </span>
                     </td>
-                    <td className="py-4 px-3 text-center pr-2">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="py-4 px-3 text-right pr-4">
+                      <div className="flex items-center justify-end gap-2">
                         {item.status === "Menunggu" && (
                           <>
                             <button

@@ -803,8 +803,8 @@ export default function ProdukPage() {
                       )}
                     </td>
 
-                    <td className="py-4 text-center pr-2">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="py-4 text-right pr-4">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openEditModal(item)}
                           className="bg-[#5ec250] hover:bg-[#4cb03f] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"

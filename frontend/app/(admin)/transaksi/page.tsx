@@ -513,7 +513,7 @@ export default function TransaksiPage() {
                         {item.status}
                       </span>
                     </td>
-                    <td className="py-4 px-3 text-center pr-2">
+                    <td className="py-4 px-3 text-right pr-4">
                       <button
                         onClick={() => setSelectedTx(item)}
                         className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-5 py-2 text-xs font-semibold transition cursor-pointer shadow-2xs"
