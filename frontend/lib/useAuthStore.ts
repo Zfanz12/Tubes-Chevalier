@@ -4,9 +4,8 @@ import { persist } from "zustand/middleware";
 interface User {
   id: number;
   name: string;
-  email: string;
+  no_hp: string;
   role: "petani" | "umkm";
-  no_hp?: string;
   latitude?: number;
   longitude?: number;
   alamat?: string;
