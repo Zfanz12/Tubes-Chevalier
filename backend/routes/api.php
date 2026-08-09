@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\PetaniController;
 use App\Http\Controllers\Api\ProdukController;
 use App\Http\Controllers\Api\TransaksiController;
 use App\Http\Controllers\Api\BukuKasController;
+use App\Http\Controllers\Api\MarketPriceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/send-otp', [AuthController::class, 'sendOtp']); // Route baru kirim OTP
 Route::get('/petani', [PetaniController::class, 'index']);
 
 // Protected routes
@@ -45,4 +47,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Buku Kas Digital
     Route::get('/buku-kas', [BukuKasController::class, 'index']);
     Route::post('/buku-kas', [BukuKasController::class, 'store']);
+
+    // Harga Pasar Harian (Market Prices)
+    Route::get('/market-prices', [MarketPriceController::class, 'index']);
+    Route::post('/market-prices', [MarketPriceController::class, 'store']);
+    Route::delete('/market-prices/{id}', [MarketPriceController::class, 'destroy']);
 });

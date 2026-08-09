@@ -1,7 +1,9 @@
 "use client";
 
-import React from "react";
-import { Bell, LogOut, Settings, User, Menu } from "lucide-react";
+import React, { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Loader2, LogOut, Settings, User } from "lucide-react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -12,99 +14,201 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { useSidebar } from "@/hooks/use-sidebar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useAuthStore } from "@/lib/useAuthStore";
+import { apiFetch } from "@/lib/api";
 
-function getFormattedDate() {
-  const now = new Date();
-  return now.toLocaleDateString("id-ID", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
+// ── Animated wave icon untuk toast ─────────────────────────────────────────
+const WaveIcon = () => (
+  <span className="animate-wave text-xl leading-none">👋</span>
+);
+
+const pageTitles: Record<string, string> = {
+  "/dashboard": "Dashboard",
+  "/produk": "Produk",
+  "/pesanan": "Pesanan",
+  "/transaksi": "Transaksi",
+  "/data-panen": "Data Panen",
+  "/chat": "Chat",
+  "/feedback": "Feedback",
+  "/insight": "Insight",
+};
 
 export default function Topbar() {
-  const { toggle } = useSidebar();
-  const dateStr = getFormattedDate();
+  const pathname = usePathname();
+  const router = useRouter();
+  const title = pageTitles[pathname] || "Dashboard";
+
+  // ── Auth state dari store (versi kita) ─────────────────────────────────
+  const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // ── Reactive date pakai useEffect (versi teman — lebih aman untuk SSR) ─
+  const [currentDate, setCurrentDate] = useState<string>("");
+  React.useEffect(() => {
+    const formatted = new Date().toLocaleDateString("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    setCurrentDate(formatted);
+  }, []);
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await apiFetch("/logout", {
+        method: "POST",
+        token: token ?? undefined,
+      });
+    } catch {
+      // Tetap lanjutkan logout meski API gagal
+    } finally {
+      clearAuth();
+      toast.success("Berhasil keluar, Sampai jumpa lagi!", {
+        icon: <WaveIcon />,
+        duration: 3000,
+      });
+      router.push("/login");
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
-    <header className="h-16 bg-[#05402e] text-white flex items-center justify-between px-4 shadow-sm shrink-0">
-      <div className="flex items-center gap-2">
-        <span className="text-emerald-100/80 text-sm font-medium hidden sm:block">
-          {dateStr}
-        </span>
-      </div>
+    <>
+      <header className="bg-[#1B4332] text-white ml-8 px-8 pt-4 pb-4 rounded-bl-[36px] flex items-start justify-between shrink-0 shadow-sm transition-all duration-300 relative overflow-hidden">
+        {/* Low Poly Geometric Background (versi teman) */}
+        <div className="absolute inset-0 pointer-events-none opacity-15">
+          <svg
+            className="w-full h-full object-cover"
+            viewBox="0 0 1000 120"
+            preserveAspectRatio="none"
+          >
+            <polygon points="0,0 250,0 150,80" fill="#2d5746" opacity="0.7" />
+            <polygon points="250,0 500,0 400,100" fill="#40916c" opacity="0.5" />
+            <polygon points="500,0 750,0 650,70" fill="#52b788" opacity="0.4" />
+            <polygon points="750,0 1000,0 850,120" fill="#74c69d" opacity="0.3" />
+            <polygon points="0,0 150,80 0,120" fill="#1b4332" opacity="0.8" />
+            <polygon points="150,80 400,100 250,120 0,120" fill="#2d5746" opacity="0.6" />
+            <polygon points="400,100 650,70 550,120 250,120" fill="#40916c" opacity="0.4" />
+            <polygon points="650,70 850,120 1000,120 550,120" fill="#52b788" opacity="0.3" />
+          </svg>
+        </div>
 
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-emerald-100/80 hover:bg-emerald-800/50 hover:text-white relative"
-          aria-label="Notifications"
-        >
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#05402e]" />
-        </Button>
+        {/* Date & Page Title */}
+        <div className="relative z-10">
+          <span className="text-emerald-100/80 text-sm   font-medium block mb-1 capitalize drop-shadow-xs">
+            {currentDate || "Memuat tanggal..."}
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight text-white font-sans drop-shadow-xs">
+            {title}
+          </h1>
+        </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={(props) => (
-              <button
-                {...props}
-                className="flex items-center gap-2.5 bg-[#e8faf4]/15 hover:bg-[#e8faf4]/25 transition px-3 py-1.5 rounded-full border border-emerald-600/30 cursor-pointer outline-none"
+        {/* User Dropdown */}
+        <div className="flex items-center gap-3 relative z-10">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={(props) => (
+                <button
+                  {...props}
+                  className="flex items-center gap-2.5 bg-[#4c7766]/80 hover:bg-[#588774] transition px-3.5 py-1.5 rounded-full text-white cursor-pointer outline-none shadow-xs border border-emerald-600/30"
+                >
+                  <Avatar className="w-8 h-8 ring-1 ring-white/30">
+                    <AvatarImage src="" alt={user?.name ?? "User"} />
+                    <AvatarFallback className="bg-emerald-800 text-emerald-200 text-xs font-semibold">
+                      {user ? getInitials(user.name) : "??"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-semibold text-white tracking-wide">
+                    {user?.name ?? "User"}
+                  </span>
+                </button>
+              )}
+            />
+
+            <DropdownMenuContent align="end" className="w-52 mt-1">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-sm">
+                      {user?.name ?? "User"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {user?.email ?? ""}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="my-2" />
+                <DropdownMenuItem>
+                  <User className="w-4 h-4" />
+                  Profil Saya
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Settings className="w-4 h-4" />
+                  Pengaturan
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setTimeout(() => setShowLogoutDialog(true), 100)}
               >
-                <Avatar className="w-7 h-7">
-                  <AvatarImage src="" alt="Ahmad Tahalu" />
-                  <AvatarFallback className="bg-emerald-700 text-emerald-200 text-xs font-semibold">
-                    AT
-                  </AvatarFallback>
-                </Avatar>
-
-                <span className="hidden sm:block text-sm font-medium text-emerald-50">
-                  Ahmad Tahalu
-                </span>
-              </button>
-            )}
-          />
-
-          <DropdownMenuContent align="end" className="w-52">
-
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>
-                <div className="flex flex-col">
-                  <span className="font-semibold text-sm">
-                    Ahmad Tahalu
-                  </span>
-
-                  <span className="text-xs text-muted-foreground">
-                    admin@harvesta.id
-                  </span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="my-2" />
-              <DropdownMenuItem>
-                <User className="w-4 h-4" />
-                Profil Saya
+                <LogOut className="w-4 h-4" />
+                Keluar
               </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
 
-              <DropdownMenuItem>
-                <Settings className="w-4 h-4" />
-                Pengaturan
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem variant="destructive">
-              <LogOut className="w-4 h-4" />
-              Keluar
-            </DropdownMenuItem>
-
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Keluar</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah kamu yakin ingin keluar dari akun ini? Kamu perlu login
+              kembali untuk mengakses dashboard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoggingOut}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isLoggingOut ? "Keluar..." : "Ya, Keluar"}
+              {isLoggingOut && <Loader2 className="w-4 h-4 animate-spin" />}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
