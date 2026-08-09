@@ -13,6 +13,7 @@ import {
   Edit,
   CheckCircle2,
   Info,
+  ArrowLeft,
 } from "lucide-react";
 import {
   Dialog,
@@ -147,19 +148,29 @@ export default function ProdukPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
+  // View mode: "table" | "add" | "edit"
+  const [viewMode, setViewMode] = useState<"table" | "add" | "edit">("table");
+
   // Modals
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
 
+  // Detail Modal State
+  const [selectedDetailProduct, setSelectedDetailProduct] = useState<Product | null>(null);
+
   // Form State
   const [formData, setFormData] = useState({
     name: "",
     category: "",
+    jenisProduk: "Sayuran Organik",
+    deskripsi: "Hadirkan nutrisi terbaik untuk keluarga dengan sayur segar berkualitas premium dari petani lokal. Dikemas higienis dan disortir secara ketat.",
     stock: "",
     price: "",
     unitSelect: "/kg",
     customUnit: "",
+    minimalPembelian: "1",
+    statusProduk: "Aktif" as "Aktif" | "Nonaktif",
     image: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=120&q=80",
   });
 
@@ -260,7 +271,8 @@ export default function ProdukPage() {
 
     setProducts([newProd, ...products]);
     setIsAddOpen(false);
-    toast.success(`Produk "${newProd.name}" berhasil ditambahkan dengan status "${computedStatus}"!`);
+    setViewMode("table");
+    toast.success(`Produk "${newProd.name}" berhasil ditambahkan!`);
     resetForm();
   };
 
@@ -268,10 +280,14 @@ export default function ProdukPage() {
     setFormData({
       name: "",
       category: "",
+      jenisProduk: "Sayuran Organik",
+      deskripsi: "Hadirkan nutrisi terbaik untuk keluarga dengan sayur segar berkualitas premium dari petani lokal.",
       stock: "",
       price: "",
       unitSelect: "/kg",
       customUnit: "",
+      minimalPembelian: "1",
+      statusProduk: "Aktif",
       image: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=120&q=80",
     });
   };
@@ -285,12 +301,17 @@ export default function ProdukPage() {
     setFormData({
       name: p.name,
       category: p.category,
+      jenisProduk: "Sayuran Organik",
+      deskripsi: "Hadirkan nutrisi terbaik untuk keluarga dengan sayur bayam hijau segar dari Tani Gacor! Kami menyediakan bayam berkualitas premium seberat ±250 gram (1 ikat) yang dipanen dan disortir dengan ketat.",
       stock: stockVal,
       price: priceVal,
       unitSelect: isPreset ? p.unit : "Custom",
       customUnit: isPreset ? "" : p.unit,
+      minimalPembelian: "2",
+      statusProduk: p.status === "Habis" ? "Nonaktif" : "Aktif",
       image: p.image,
     });
+    setViewMode("edit");
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -317,15 +338,16 @@ export default function ProdukPage() {
               stock: `${numericStock} ${unitLabel}`,
               price: formattedPrice,
               unit: finalUnit,
-              status: computedStatus,
+              status: formData.statusProduk === "Nonaktif" ? "Habis" : computedStatus,
               image: formData.image,
             }
           : item
       )
     );
 
-    toast.success(`Produk "${trimmedName}" diperbarui! Status otomatis: ${computedStatus}`);
+    toast.success(`Produk "${trimmedName}" berhasil diperbarui!`);
     setEditingProduct(null);
+    setViewMode("table");
     resetForm();
   };
 
@@ -335,6 +357,300 @@ export default function ProdukPage() {
     toast.success(`Produk "${deletingProduct.name}" berhasil dihapus`);
     setDeletingProduct(null);
   };
+
+  // ── Dedicated Page View for Tambah / Edit Produk (page edit produk.png) ──
+  if (viewMode === "add" || viewMode === "edit") {
+    const isEdit = viewMode === "edit";
+    return (
+      <div className="space-y-6 w-full pb-10">
+        {/* Top Header */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              setViewMode("table");
+              setEditingProduct(null);
+              resetForm();
+            }}
+            className="w-9 h-9 rounded-xl bg-white border border-gray-200 text-gray-700 flex items-center justify-center hover:bg-gray-50 transition cursor-pointer shadow-2xs"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            {isEdit ? "Edit Produk" : "Tambah Produk"}
+          </h1>
+        </div>
+
+        {/* 2-Column Grid matching page edit produk.png */}
+        <form onSubmit={isEdit ? handleEditSubmit : handleAddSubmit} className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* Left Sidebar Card */}
+          <div className="w-full lg:w-72 bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-6 shrink-0">
+            <div>
+              <h3 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-3">Kelengkapan</h3>
+              <div className="space-y-4 pt-4 text-xs font-medium">
+                <div className="flex items-center gap-3 text-[#1B4332] font-bold">
+                  <div className="w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 text-[#1B4332] flex items-center justify-center text-xs">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <span>Informasi Produk</span>
+                </div>
+                <div className="flex items-center gap-3 text-gray-600">
+                  <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-bold">
+                    2
+                  </div>
+                  <span>Informasi Penjualan</span>
+                </div>
+                <div className="flex items-center gap-3 text-gray-600">
+                  <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-bold">
+                    3
+                  </div>
+                  <span>Foto Produk</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Produk Toggle Pill (Edit mode) */}
+            {isEdit && (
+              <div className="space-y-2 border-t border-gray-100 pt-4">
+                <Label className="text-xs font-semibold text-gray-700 block">Status Produk:</Label>
+                <div className="flex items-center bg-gray-100 p-1 rounded-full border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, statusProduk: "Aktif" })}
+                    className={`flex-1 py-1.5 text-xs font-semibold rounded-full transition cursor-pointer ${
+                      formData.statusProduk === "Aktif"
+                        ? "bg-[#1B4332] text-white shadow-2xs"
+                        : "text-gray-500 hover:text-gray-800"
+                    }`}
+                  >
+                    Aktif
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, statusProduk: "Nonaktif" })}
+                    className={`flex-1 py-1.5 text-xs font-semibold rounded-full transition cursor-pointer ${
+                      formData.statusProduk === "Nonaktif"
+                        ? "bg-red-600 text-white shadow-2xs"
+                        : "text-gray-500 hover:text-gray-800"
+                    }`}
+                  >
+                    Nonaktif
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setViewMode("table");
+                  setEditingProduct(null);
+                  resetForm();
+                }}
+                className="flex-1 h-10 rounded-xl font-semibold text-xs cursor-pointer"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl font-semibold text-xs cursor-pointer shadow-xs"
+              >
+                Simpan
+              </Button>
+            </div>
+          </div>
+
+          {/* Right Main Content Cards */}
+          <div className="flex-1 space-y-6 w-full">
+            {/* Card 1: Informasi Produk */}
+            <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-4">
+              <h3 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-3">Informasi Produk</h3>
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <Label className="text-gray-700 font-semibold text-xs">Nama Produk</Label>
+                  <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                </div>
+                <select
+                  value={formData.name}
+                  onChange={(e) => {
+                    const selected = KOMODITAS_CATALOG.find((k) => k.name === e.target.value);
+                    setFormData({
+                      ...formData,
+                      name: e.target.value,
+                      category: selected?.category || "",
+                    });
+                  }}
+                  className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
+                  required
+                >
+                  <option value="" disabled>Pilih nama produk...</option>
+                  {KOMODITAS_CATALOG.map((k) => (
+                    <option key={k.name} value={k.name}>{k.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-gray-700 font-semibold text-xs">Kategori</Label>
+                    <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                  </div>
+                  <Input
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    placeholder="Pilih kategori sayuran"
+                    className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20 text-xs"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-gray-700 font-semibold text-xs">Jenis Produk</Label>
+                    <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                  </div>
+                  <div className="flex items-center gap-4 pt-2 text-xs">
+                    <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium">
+                      <input
+                        type="radio"
+                        name="jenisProduk"
+                        value="Sayuran Organik"
+                        checked={formData.jenisProduk === "Sayuran Organik"}
+                        onChange={(e) => setFormData({ ...formData, jenisProduk: e.target.value })}
+                        className="accent-[#1B4332]"
+                      />
+                      Sayuran Organik
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium">
+                      <input
+                        type="radio"
+                        name="jenisProduk"
+                        value="Sayuran Non Organik"
+                        checked={formData.jenisProduk === "Sayuran Non Organik"}
+                        onChange={(e) => setFormData({ ...formData, jenisProduk: e.target.value })}
+                        className="accent-[#1B4332]"
+                      />
+                      Sayuran Non Organik
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <Label className="text-gray-700 font-semibold text-xs">Deskripsi</Label>
+                  <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                </div>
+                <textarea
+                  rows={4}
+                  value={formData.deskripsi}
+                  onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
+                  placeholder="Tuliskan deskripsi produk..."
+                  className="w-full p-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20 outline-none text-xs text-gray-800"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Card 2: Informasi Penjualan */}
+            <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-4">
+              <h3 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-3">Informasi Penjualan</h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-gray-700 font-semibold text-xs">Harga (Rp)</Label>
+                    <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                  </div>
+                  <Input
+                    type="number"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    placeholder="Masukkan harga"
+                    className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20 text-xs"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-gray-700 font-semibold text-xs">Satuan</Label>
+                    <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                  </div>
+                  <select
+                    value={formData.unitSelect}
+                    onChange={(e) => setFormData({ ...formData, unitSelect: e.target.value })}
+                    className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
+                  >
+                    <option value="Ikat">Ikat</option>
+                    <option value="Gram">Gram</option>
+                    <option value="Kilogram">Kilogram</option>
+                    <option value="/kg">/kg</option>
+                    <option value="/ikat">/ikat</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-gray-700 font-semibold text-xs">Minimal Pembelian</Label>
+                    <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                  </div>
+                  <Input
+                    type="number"
+                    value={formData.minimalPembelian}
+                    onChange={(e) => setFormData({ ...formData, minimalPembelian: e.target.value })}
+                    placeholder="Masukkan jumlah minimal"
+                    className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20 text-xs"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-gray-700 font-semibold text-xs">Jumlah Stok</Label>
+                    <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                  </div>
+                  <Input
+                    type="number"
+                    value={formData.stock}
+                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    placeholder="Masukkan jumlah stok"
+                    className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20 text-xs"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input type="checkbox" id="aturMinPage" defaultChecked className="accent-[#1B4332] rounded" />
+                <label htmlFor="aturMinPage" className="text-xs font-semibold text-gray-700 cursor-pointer">
+                  Atur minimal pembelian
+                </label>
+              </div>
+            </div>
+
+            {/* Card 3: Foto Produk */}
+            <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-4">
+              <h3 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-3">Foto Produk</h3>
+              <div className="border-2 border-dashed border-emerald-200 bg-emerald-50/40 rounded-2xl p-6 text-center space-y-2">
+                <div className="w-12 h-12 rounded-xl bg-white border border-emerald-200 text-[#1B4332] flex items-center justify-center mx-auto shadow-2xs">
+                  <Package className="w-6 h-6" />
+                </div>
+                <p className="text-xs font-semibold text-gray-800">Unggah Foto Produk Panen</p>
+                <p className="text-[11px] text-gray-400">PNG, JPG, JPEG hingga 5MB</p>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 w-full pb-10">
@@ -414,7 +730,7 @@ export default function ProdukPage() {
           <button
             onClick={() => {
               resetForm();
-              setIsAddOpen(true);
+              setViewMode("add");
             }}
             className="w-full sm:w-auto bg-[#1B4332] hover:bg-[#05543c] text-white text-xs font-semibold rounded-full px-5 py-2.5 transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
           >
@@ -490,14 +806,20 @@ export default function ProdukPage() {
                     <td className="py-4 text-center pr-2">
                       <div className="flex items-center justify-center gap-2">
                         <button
+                          onClick={() => setSelectedDetailProduct(item)}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-[#1B4332] border border-emerald-200 rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                        >
+                          Detail
+                        </button>
+                        <button
                           onClick={() => openEditModal(item)}
-                          className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-5 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                          className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-4.5 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => setDeletingProduct(item)}
-                          className="bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-full px-4.5 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                          className="bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
                         >
                           Hapus
                         </button>
@@ -875,6 +1197,51 @@ export default function ProdukPage() {
                 className="h-10 px-6 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-xl font-semibold cursor-pointer"
               >
                 Hapus Produk
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      {/* ── Modal Detail Produk (overlay detail produk.png) ── */}
+      {selectedDetailProduct && (
+        <Dialog open={!!selectedDetailProduct} onOpenChange={(open) => !open && setSelectedDetailProduct(null)}>
+          <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
+            <DialogHeader className="border-b border-gray-100 pb-3">
+              <DialogTitle className="text-base font-bold text-gray-900">Detail Produk</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2 text-xs">
+              <h4 className="font-bold text-gray-900 text-xs">Informasi Produk</h4>
+
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-gray-500 font-medium">Nama Produk</span>
+                  <span className="font-bold text-gray-900">{selectedDetailProduct.name}</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-gray-500 font-medium">Kategori</span>
+                  <span className="font-bold text-gray-900">{selectedDetailProduct.category}</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-gray-500 font-medium">Jenis Produk</span>
+                  <span className="font-bold text-gray-900">Sayuran Organik</span>
+                </div>
+                <div className="space-y-1.5 pt-2">
+                  <span className="text-gray-500 font-medium block">Deskripsi</span>
+                  <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5 text-gray-700 leading-relaxed text-[11px]">
+                    Hadirkan nutrisi terbaik untuk keluarga dengan sayur {selectedDetailProduct.name.toLowerCase()} segar dari Tani Gacor! Kami menyediakan {selectedDetailProduct.name.toLowerCase()} berkualitas premium yang dipanen dan disortir secara ketat sehingga kesegarannya tetap terjaga.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-4 border-t border-gray-100">
+              <Button
+                type="button"
+                onClick={() => setSelectedDetailProduct(null)}
+                className="w-full h-10 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl font-semibold text-xs cursor-pointer"
+              >
+                Tutup
               </Button>
             </DialogFooter>
           </DialogContent>

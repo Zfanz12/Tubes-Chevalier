@@ -275,6 +275,16 @@ export default function DataPanenPage() {
 
   const [selectedUpcoming, setSelectedUpcoming] = useState<PanenAkanDatang | null>(null);
 
+  const [isAddTanamOpen, setIsAddTanamOpen] = useState(false);
+  const [newTanam, setNewTanam] = useState({
+    name: "",
+    kategori: "Sayuran",
+    tanggalTanam: "",
+    jumlahBibit: "",
+    estimasiBerat: "",
+    estimasiWaktuTanam: "",
+  });
+
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newPanen, setNewPanen] = useState({
     name: "",
@@ -287,6 +297,24 @@ export default function DataPanenPage() {
     estimasiWaktuTanam: "30 Hari",
     jumlahBibit: "100 bibit",
   });
+
+  const handleAddTanamSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTanam.name.trim()) {
+      toast.error("Nama tanaman tidak boleh kosong!");
+      return;
+    }
+    toast.success(`Data tanam "${newTanam.name}" berhasil dicatat!`);
+    setIsAddTanamOpen(false);
+    setNewTanam({
+      name: "",
+      kategori: "Sayuran",
+      tanggalTanam: "",
+      jumlahBibit: "",
+      estimasiBerat: "",
+      estimasiWaktuTanam: "",
+    });
+  };
 
   const itemsPerPage = 5;
 
@@ -388,10 +416,7 @@ export default function DataPanenPage() {
           Input Data Panen
         </button>
         <button
-          onClick={() => {
-            toast.info("Fitur Input Data Tanam siap digunakan.");
-            setIsAddOpen(true);
-          }}
+          onClick={() => setIsAddTanamOpen(true)}
           className="bg-white border border-[#1B4332] text-[#1B4332] hover:bg-emerald-50 text-xs font-semibold rounded-xl px-5 py-2.5 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
         >
           <Plus className="w-4 h-4" />
@@ -686,34 +711,180 @@ export default function DataPanenPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Modal Detail Panen Akan Datang ── */}
-      {selectedUpcoming && (
-        <Dialog open={!!selectedUpcoming} onOpenChange={(open) => !open && setSelectedUpcoming(null)}>
-          <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
-            <DialogHeader className="pb-3 border-b border-gray-100">
-              <DialogTitle className="text-lg font-bold text-gray-900">
-                Detail Panen Mendatang
-              </DialogTitle>
-              <DialogDescription className="text-xs text-gray-500">
-                Rincian jadwal panen komoditas
-              </DialogDescription>
-            </DialogHeader>
+      {/* ── Modal Input Data Tanam (content.png & header.png) ── */}
+      <Dialog open={isAddTanamOpen} onOpenChange={setIsAddTanamOpen}>
+        <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
+          <DialogHeader className="pb-3 border-b border-gray-100 flex items-center justify-between">
+            <DialogTitle className="text-base font-bold text-gray-900">Input Data Tanam</DialogTitle>
+          </DialogHeader>
 
-            <div className="py-3 text-xs space-y-1">
-              <DetailRow label="Nama Tanaman" value={selectedUpcoming.name} />
-              <DetailRow label="Estimasi Berat Target" value={selectedUpcoming.targetBerat} />
-              <DetailRow label="Jadwal Tanggal Panen" value={selectedUpcoming.tanggal} />
-              <DetailRow label="Umur Tanaman Saat Ini" value={`${selectedUpcoming.umur} Hari`} />
-              <DetailRow label="Sisa Waktu Panen" value={`${selectedUpcoming.hariLagi} Hari Lagi`} />
-              <DetailRow label="Status Kesiapan" value="Siap Dipanen Sesuai Jadwal" />
+          <form onSubmit={handleAddTanamSubmit} className="space-y-4 py-2 text-xs">
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <Label className="text-gray-700 font-semibold">Nama Tanaman</Label>
+                <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+              </div>
+              <Input
+                placeholder="Masukkan nama tanaman"
+                value={newTanam.name}
+                onChange={(e) => setNewTanam({ ...newTanam, name: e.target.value })}
+                className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                required
+              />
             </div>
 
-            <DialogFooter className="pt-3">
-              <Button
-                onClick={() => setSelectedUpcoming(null)}
-                className="w-full bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl h-10 text-xs font-semibold cursor-pointer shadow-xs"
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <Label className="text-gray-700 font-semibold">Kategori</Label>
+                <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+              </div>
+              <select
+                value={newTanam.kategori}
+                onChange={(e) => setNewTanam({ ...newTanam, kategori: e.target.value })}
+                className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
               >
-                Tutup
+                <option value="Sayuran">Pilih kategori sayuran</option>
+                <option value="Bayam">Bayam</option>
+                <option value="Wortel">Wortel</option>
+                <option value="Kubis">Kubis</option>
+                <option value="Tomat">Tomat</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <Label className="text-gray-700 font-semibold">Tanggal Tanam</Label>
+                  <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                </div>
+                <Input
+                  type="date"
+                  value={newTanam.tanggalTanam}
+                  onChange={(e) => setNewTanam({ ...newTanam, tanggalTanam: e.target.value })}
+                  className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <Label className="text-gray-700 font-semibold">Jumlah Bibit</Label>
+                  <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                </div>
+                <Input
+                  placeholder="Waktu tanam"
+                  value={newTanam.jumlahBibit}
+                  onChange={(e) => setNewTanam({ ...newTanam, jumlahBibit: e.target.value })}
+                  className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <Label className="text-gray-700 font-semibold">Estimasi Berat</Label>
+                  <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Estimasi berat panen"
+                    value={newTanam.estimasiBerat}
+                    onChange={(e) => setNewTanam({ ...newTanam, estimasiBerat: e.target.value })}
+                    className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                    required
+                  />
+                  <span className="text-xs font-medium text-gray-500 shrink-0">kg</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <Label className="text-gray-700 font-semibold">Estimasi Waktu Tanam</Label>
+                  <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Waktu tanam"
+                    value={newTanam.estimasiWaktuTanam}
+                    onChange={(e) => setNewTanam({ ...newTanam, estimasiWaktuTanam: e.target.value })}
+                    className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                    required
+                  />
+                  <span className="text-xs font-medium text-gray-500 shrink-0">hari</span>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-4 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddTanamOpen(false)}
+                className="flex-1 h-10 rounded-xl font-semibold text-xs cursor-pointer"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl font-semibold text-xs cursor-pointer shadow-xs"
+              >
+                Catat Data Tanam
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal Detail Panen Akan Datang (content-3.png & content-4.png) ── */}
+      {selectedUpcoming && (
+        <Dialog open={!!selectedUpcoming} onOpenChange={(open) => !open && setSelectedUpcoming(null)}>
+          <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
+            <DialogHeader className="pb-3 border-b border-gray-100">
+              <DialogTitle className="text-base font-bold text-gray-900">
+                Detail Tanaman
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="py-3 text-xs space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-gray-700 font-semibold">Nama Tanaman</Label>
+                <Input value={selectedUpcoming.name} readOnly className="h-10 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-gray-700 font-semibold">Tanggal Tanam</Label>
+                  <Input value={selectedUpcoming.tanggal} readOnly className="h-10 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-gray-700 font-semibold">Jumlah Bibit</Label>
+                  <Input value="250" readOnly className="h-10 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-gray-700 font-semibold">Estimasi Berat</Label>
+                  <Input value={selectedUpcoming.targetBerat} readOnly className="h-10 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-gray-700 font-semibold">Estimasi Waktu Tanam</Label>
+                  <Input value={`${selectedUpcoming.umur} hari`} readOnly className="h-10 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800" />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-3 flex flex-col gap-2">
+              <Button
+                onClick={() => {
+                  toast.success(`Panen sekarang berhasil dicatat untuk ${selectedUpcoming.name}!`);
+                  setSelectedUpcoming(null);
+                }}
+                className="w-full bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl h-10 text-xs font-bold cursor-pointer shadow-xs"
+              >
+                Panen Sekarang
               </Button>
             </DialogFooter>
           </DialogContent>

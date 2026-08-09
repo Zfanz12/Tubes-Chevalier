@@ -169,16 +169,17 @@ export default function PesananPage() {
   const [timeFilter, setTimeFilter] = useState<"Semua" | "7 hari" | "30 hari">("Semua");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Modals
+  // Modals & Multi-item order builder
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newOrder, setNewOrder] = useState({
-    customer: "",
-    total: "",
-    items: "",
-    deliveryMethod: "Pickup" as DeliveryMethod,
-    alamat: "",
-  });
+  const [newOrderCustomer, setNewOrderCustomer] = useState("");
+  const [newOrderDeliveryMethod, setNewOrderDeliveryMethod] = useState<DeliveryMethod>("Pickup");
+  const [newOrderAlamat, setNewOrderAlamat] = useState("");
+  const [selectedCatalogItem, setSelectedCatalogItem] = useState("Bayam Murid Siswoyo");
+  const [itemQty, setItemQty] = useState("2");
+  const [addedItems, setAddedItems] = useState<{ name: string; qty: string; price: string }[]>([
+    { name: "Bayam Organik Asal Jember", qty: "2 kg", price: "Rp 25.000" },
+  ]);
 
   const itemsPerPage = 5;
 
@@ -226,42 +227,54 @@ export default function PesananPage() {
     toast.success(`Status pesanan ${id} diperbarui menjadi "${newStatus}"`);
   };
 
+  const handleAddItemToOrder = () => {
+    const numericQty = parseFloat(itemQty);
+    if (isNaN(numericQty) || numericQty <= 0) {
+      toast.error("Jumlah harus berupa angka valid (minimal 1)!");
+      return;
+    }
+    const unitPrice = 12500;
+    const totalPriceNum = unitPrice * numericQty;
+    const formattedPrice = `Rp ${totalPriceNum.toLocaleString("id-ID")}`;
+    setAddedItems((prev) => [
+      ...prev,
+      { name: selectedCatalogItem, qty: `${numericQty} kg`, price: formattedPrice },
+    ]);
+    toast.success(`Item "${selectedCatalogItem}" ditambahkan ke rincian pesanan`);
+  };
+
   const handleAddOrderSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedCustomer = newOrder.customer.trim();
-    const numericTotal = parseFloat(newOrder.total.replace(/[^\d]/g, ""));
-
-    if (!trimmedCustomer) {
-      toast.error("Nama customer tidak boleh kosong!");
-      return;
-    }
-    if (isNaN(numericTotal) || numericTotal <= 0) {
-      toast.error("Total harga harus berupa angka valid lebih dari 0!");
-      return;
-    }
-    if (newOrder.deliveryMethod === "Diantar" && !newOrder.alamat.trim()) {
-      toast.error("Alamat pengiriman tidak boleh kosong untuk metode Diantar!");
+    if (addedItems.length === 0) {
+      toast.error("Tambahkan minimal 1 produk ke rincian pesanan!");
       return;
     }
 
-    const formattedTotal = `Rp ${numericTotal.toLocaleString("id-ID")}`;
+    const calculatedTotalNum = addedItems.reduce((acc, item) => {
+      const p = parseFloat(item.price.replace(/[^\d]/g, "")) || 0;
+      return acc + p;
+    }, 0);
+
+    const formattedTotal = `Rp ${calculatedTotalNum.toLocaleString("id-ID")}`;
+    const customerName = newOrderCustomer.trim() || "Customer Umum";
 
     nextIdCounter++;
     const order: OrderItem = {
       id: `INV-${nextIdCounter}`,
-      customer: trimmedCustomer,
+      customer: customerName,
       date: new Date().toLocaleDateString("id-ID"),
       total: formattedTotal,
       status: "Menunggu",
-      deliveryMethod: newOrder.deliveryMethod,
-      alamat: newOrder.deliveryMethod === "Diantar" ? newOrder.alamat.trim() : undefined,
-      items: [{ name: newOrder.items.trim() || "Komoditas Sayur", qty: "1 paket", price: formattedTotal }],
+      deliveryMethod: newOrderDeliveryMethod,
+      alamat: newOrderDeliveryMethod === "Diantar" ? newOrderAlamat.trim() : undefined,
+      items: addedItems,
     };
 
     setOrders([order, ...orders]);
     setIsAddOpen(false);
-    toast.success(`Pesanan baru ${order.id} berhasil dicatat!`);
-    setNewOrder({ customer: "", total: "", items: "", deliveryMethod: "Pickup", alamat: "" });
+    setNewOrderCustomer("");
+    setNewOrderAlamat("");
+    setAddedItems([{ name: "Bayam Organik Asal Jember", qty: "2 kg", price: "Rp 25.000" }]);
   };
 
   return (
@@ -492,78 +505,90 @@ export default function PesananPage() {
         </div>
       </div>
 
-      {/* ── Modal Catat Pesanan Baru ── */}
+      {/* ── Modal Catat Pesanan (overlay catat pesanan.png) ── */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
+        <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
           <DialogHeader className="pb-3 border-b border-gray-100">
-            <DialogTitle className="text-lg font-bold text-gray-900">Catat Pesanan Baru</DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">
-              Buat rincian pesanan baru dari pelanggan
-            </DialogDescription>
+            <DialogTitle className="text-lg font-bold text-gray-900">Catat Pesanan</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleAddOrderSubmit} className="space-y-4 py-3 text-xs">
             <div className="space-y-1.5">
               <Label className="text-gray-700 font-semibold">Nama Customer</Label>
               <Input
-                placeholder="Contoh: Reza Rahardian"
-                value={newOrder.customer}
-                onChange={(e) => setNewOrder({ ...newOrder, customer: e.target.value })}
+                placeholder="Masukkan nama customer (opsional)"
+                value={newOrderCustomer}
+                onChange={(e) => setNewOrderCustomer(e.target.value)}
                 className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
-                required
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-gray-700 font-semibold">Total Harga (Angka Rp)</Label>
-                <Input
-                  type="number"
-                  min="100"
-                  step="100"
-                  placeholder="Contoh: 130000"
-                  value={newOrder.total}
-                  onChange={(e) => setNewOrder({ ...newOrder, total: e.target.value })}
-                  className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
-                  required
-                />
-              </div>
-
-              {/* US-06: Metode Pengambilan */}
-              <div className="space-y-1.5">
-                <Label className="text-gray-700 font-semibold">Metode Pengambilan</Label>
-                <select
-                  value={newOrder.deliveryMethod}
-                  onChange={(e) => setNewOrder({ ...newOrder, deliveryMethod: e.target.value as DeliveryMethod })}
-                  className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
-                >
-                  <option value="Pickup">Ambil Sendiri (Pickup)</option>
-                  <option value="Diantar">Diantar ke Alamat</option>
-                </select>
-              </div>
-            </div>
-
-            {newOrder.deliveryMethod === "Diantar" && (
-              <div className="space-y-1.5">
-                <Label className="text-gray-700 font-semibold">Alamat Pengiriman</Label>
-                <Input
-                  placeholder="Contoh: Jl. Merdeka No. 45, Bandung"
-                  value={newOrder.alamat}
-                  onChange={(e) => setNewOrder({ ...newOrder, alamat: e.target.value })}
-                  className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
-                  required
-                />
-              </div>
-            )}
 
             <div className="space-y-1.5">
-              <Label className="text-gray-700 font-semibold">Detail Item Pesanan</Label>
-              <Input
-                placeholder="Contoh: 5 kg Tomat Segar"
-                value={newOrder.items}
-                onChange={(e) => setNewOrder({ ...newOrder, items: e.target.value })}
-                className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
-              />
+              <div className="flex justify-between items-center">
+                <Label className="text-gray-700 font-semibold">Nama Produk</Label>
+                <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+              </div>
+              <select
+                value={selectedCatalogItem}
+                onChange={(e) => setSelectedCatalogItem(e.target.value)}
+                className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
+              >
+                <option value="Bayam Murid Siswoyo">Bayam Murid Siswoyo</option>
+                <option value="Bayam Organik Asal Jember">Bayam Organik Asal Jember</option>
+                <option value="Wortel Penyembah Durian">Wortel Penyembah Durian</option>
+                <option value="Kangkung Segar Hydro">Kangkung Segar Hydro</option>
+                <option value="Sawi Hijau Organik">Sawi Hijau Organik</option>
+                <option value="Tomat Merah Super">Tomat Merah Super</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <Label className="text-gray-700 font-semibold">Jumlah</Label>
+                  <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Masukkan jumlah"
+                    value={itemQty}
+                    onChange={(e) => setItemQty(e.target.value)}
+                    className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                  />
+                  <span className="text-xs font-medium text-gray-500 shrink-0">Kilogram</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddItemToOrder}
+                className="mt-5 h-10 px-4 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl font-semibold text-xs transition flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Tambah Produk
+              </button>
+            </div>
+
+            {/* Rincian Produk Section (overlay catat pesanan.png) */}
+            <div className="pt-4 border-t border-gray-100 space-y-3">
+              <h4 className="font-bold text-gray-900 text-xs">Rincian Produk</h4>
+              {addedItems.length > 0 ? (
+                <div className="space-y-2 bg-gray-50/70 p-3.5 rounded-xl border border-gray-100">
+                  {addedItems.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-100 last:border-0">
+                      <div>
+                        <p className="font-semibold text-gray-800 text-xs">{item.name}</p>
+                        <p className="text-[11px] text-gray-500">Rp 12.500 x {item.qty.replace(/[^\d.]/g, "")}</p>
+                      </div>
+                      <span className="font-bold text-gray-900 text-xs">{item.price}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic text-center py-2">Belum ada produk ditambahkan</p>
+              )}
             </div>
 
             <DialogFooter className="pt-4 gap-3">
@@ -571,13 +596,13 @@ export default function PesananPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setIsAddOpen(false)}
-                className="h-10 px-5 rounded-xl font-semibold cursor-pointer"
+                className="h-10 px-5 rounded-xl font-semibold text-xs cursor-pointer"
               >
                 Batal
               </Button>
               <Button
                 type="submit"
-                className="h-10 px-6 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl font-semibold cursor-pointer"
+                className="h-10 px-6 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl font-semibold text-xs cursor-pointer shadow-xs"
               >
                 Simpan Pesanan
               </Button>
