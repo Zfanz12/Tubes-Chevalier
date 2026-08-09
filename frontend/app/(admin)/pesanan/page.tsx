@@ -460,46 +460,12 @@ export default function PesananPage() {
                       </span>
                     </td>
                     <td className="py-4 px-3 text-right pr-4">
-                      <div className="flex items-center justify-end gap-2">
-                        {item.status === "Menunggu" && (
-                          <>
-                            <button
-                              onClick={() => setConfirmTerimaOrder(item)}
-                              className="bg-[#5ec250] hover:bg-[#4cb03f] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                            >
-                              Terima
-                            </button>
-                            <button
-                              onClick={() => setConfirmTolakOrder(item)}
-                              className="bg-[#e60000] hover:bg-[#cc0000] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                            >
-                              Tolak
-                            </button>
-                          </>
-                        )}
-                        {item.status === "Disiapkan" && (
-                          <button
-                            onClick={() => setConfirmKirimOrder(item)}
-                            className="bg-[#5ec250] hover:bg-[#4cb03f] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                          >
-                            Kirim
-                          </button>
-                        )}
-                        {(item.status === "Sedang Dikirim" || item.status === "Siap Diambil") && (
-                          <button
-                            onClick={() => setConfirmSelesaiOrder(item)}
-                            className="bg-[#5ec250] hover:bg-[#4cb03f] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                          >
-                            Selesai
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setSelectedOrder(item)}
-                          className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-4.5 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                        >
-                          Lihat detail
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setSelectedOrder(item)}
+                        className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-5 py-2 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                      >
+                        Lihat detail
+                      </button>
                     </td>
                   </tr>
                 ))
