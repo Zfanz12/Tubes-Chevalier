@@ -568,70 +568,89 @@ export default function TransaksiPage() {
         </div>
       </div>
 
-      {/* ── Transaction Detail Modal — D-01 FIX: colored status badge ── */}
+      {/* ── Modal Detail Pesanan / Transaksi (overlay detail pesanan status ... png) ── */}
       {selectedTx && (
         <Dialog open={!!selectedTx} onOpenChange={(open) => !open && setSelectedTx(null)}>
-          <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-emerald-100">
-            <DialogHeader className="pb-4 border-b border-gray-100">
-              <DialogTitle className="text-lg font-bold text-gray-900">
-                Detail Transaksi {selectedTx.id}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-gray-500">
-                Rincian transaksi dan metode pembayaran
-              </DialogDescription>
+          <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
+            <DialogHeader className="pb-3 border-b border-gray-100 flex items-center justify-between">
+              <DialogTitle className="text-base font-bold text-gray-900">Detail Pesanan</DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-5 py-3">
-              <div className="grid grid-cols-2 gap-4 text-xs bg-emerald-50/40 p-4 rounded-xl border border-emerald-100">
-                <div>
-                  <span className="text-gray-400 block mb-1">Pelanggan</span>
-                  <span className="font-semibold text-gray-900 text-sm">{selectedTx.customer}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block mb-1">Tanggal</span>
-                  <span className="font-semibold text-gray-900 text-sm">{selectedTx.date}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block mb-1">Metode Bayar</span>
-                  <span className="font-semibold text-gray-900 text-sm">{selectedTx.method}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block mb-1">Status</span>
-                  <span className={`inline-flex items-center border rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass[selectedTx.status]}`}>
-                    {selectedTx.status}
-                  </span>
+            <div className="py-2 space-y-4 text-xs">
+              {/* Section 1: Informasi Pesanan */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-gray-900 text-xs">Informasi Pesanan</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">ID Pesanan</span>
+                    <span className="font-bold text-gray-900">#TR-KSD234DFGI</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">Tanggal Pesanan</span>
+                    <span className="font-bold text-gray-900">Senin, 20 April 2026</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">Customer</span>
+                    <span className="font-bold text-gray-900">{selectedTx.customer}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">Nomor Telepon</span>
+                    <span className="font-bold text-gray-900">Transfer Virtual Account BCA</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">Status Pesanan</span>
+                    <span className={`font-bold text-xs ${
+                      selectedTx.status === "Pending" ? "text-red-500" :
+                      selectedTx.status === "Berhasil" ? "text-emerald-500" : "text-gray-500"
+                    }`}>
+                      {selectedTx.status === "Berhasil" ? "Selesai" : selectedTx.status}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">Jenis Pesanan</span>
+                    <span className="font-bold text-gray-900">Online</span>
+                  </div>
                 </div>
               </div>
 
-              {selectedTx.items && selectedTx.items.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">
-                    Item Pembelian
-                  </h4>
-                  <div className="space-y-2.5">
-                    {selectedTx.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-sm border-b border-gray-50 pb-2.5">
-                        <div>
-                          <p className="font-semibold text-gray-800">{item.name}</p>
-                          <p className="text-xs text-gray-400">Qty: {item.qty}</p>
-                        </div>
-                        <span className="font-bold text-gray-900">{item.price}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Section 2: Alamat Pengiriman */}
+              <div className="pt-3 border-t border-gray-100 space-y-1.5">
+                <h4 className="font-bold text-gray-900 text-xs">Alamat Pengiriman</h4>
+                <p className="font-bold text-gray-900 text-xs">
+                  {selectedTx.customer} (+62) 851 1234 1234
+                </p>
+                <p className="text-gray-400 text-[11px] leading-relaxed">
+                  Jalan Buah Batu Nomor 128, Kost Buah Batu Kaya, Lantai 2, Kamar 205, Desa Anjing Besar, Kecamatan Lengkong, Kota Bandung, Jawa Barat 40264
+                </p>
+              </div>
 
-              <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                <span className="font-bold text-gray-700 text-sm">Total Pembayaran</span>
-                <span className="text-lg font-extrabold text-[#1B4332]">{selectedTx.total}</span>
+              {/* Section 3: Produk (3 item) */}
+              <div className="pt-3 border-t border-gray-100 space-y-3">
+                <h4 className="font-bold text-gray-900 text-xs">
+                  Produk ({selectedTx.items?.length || 3} item)
+                </h4>
+                <div className="space-y-3">
+                  {(selectedTx.items || [
+                    { name: "Bayam Organik Asal Jember", qty: "2 kg", price: "Rp25.000" },
+                    { name: "Wortel Penyembah Durian", qty: "2 kg", price: "Rp30.000" },
+                    { name: "Bayam Palsu Asal Ngawi", qty: "1 kg", price: "Rp15.000" },
+                  ]).map((item, idx) => (
+                    <div key={idx} className="space-y-0.5">
+                      <p className="text-gray-400 font-medium text-xs">{item.name}</p>
+                      <div className="flex justify-between items-center text-xs font-bold text-gray-900">
+                        <span>Rp12.500 x {item.qty.replace(/[^\d.]/g, "") || "2"}</span>
+                        <span>{item.price}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <DialogFooter className="pt-3">
+            <DialogFooter className="pt-3 border-t border-gray-100">
               <Button
                 onClick={() => setSelectedTx(null)}
-                className="w-full bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl h-10 text-sm font-semibold cursor-pointer shadow-sm"
+                className="w-full bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl h-10 text-xs font-semibold cursor-pointer shadow-xs"
               >
                 Tutup
               </Button>

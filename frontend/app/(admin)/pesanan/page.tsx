@@ -611,119 +611,110 @@ export default function PesananPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Modal Detail Pesanan & Update Status ── */}
+      {/* ── Modal Detail Pesanan (overlay detail pesanan status ... png) ── */}
       {selectedOrder && (
         <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-          <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
-            <DialogHeader className="pb-3 border-b border-gray-100">
-              <DialogTitle className="text-lg font-bold text-gray-900">
-                Detail Pesanan {selectedOrder.id}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-gray-500">
-                Informasi dan update status pengiriman pesanan
-              </DialogDescription>
+          <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
+            <DialogHeader className="pb-3 border-b border-gray-100 flex items-center justify-between">
+              <DialogTitle className="text-base font-bold text-gray-900">Detail Pesanan</DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-5 py-3 text-xs">
-              <div className="grid grid-cols-2 gap-4 bg-emerald-50/40 p-4 rounded-xl border border-emerald-100">
-                <div>
-                  <span className="text-gray-400 block mb-1">Customer</span>
-                  <span className="font-semibold text-gray-900 text-sm">{selectedOrder.customer}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block mb-1">Tanggal</span>
-                  <span className="font-semibold text-gray-900 text-sm">{selectedOrder.date}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block mb-1">Total Harga</span>
-                  <span className="font-bold text-[#1B4332] text-sm">{selectedOrder.total}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block mb-1">Status Saat Ini</span>
-                  <span className={`inline-flex items-center border rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass[selectedOrder.status]}`}>
-                    {selectedOrder.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Metode Pengambilan Info */}
-              <div className="bg-emerald-50/40 p-4 rounded-xl border border-emerald-100 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Metode Pengambilan</span>
-                  <span className={`inline-flex items-center gap-1.5 border rounded-full px-3 py-1 text-xs font-semibold ${deliveryBadgeClass[selectedOrder.deliveryMethod]}`}>
-                    {selectedOrder.deliveryMethod === "Pickup" ? <MapPin className="w-3 h-3" /> : <Truck className="w-3 h-3" />}
-                    {selectedOrder.deliveryMethod === "Pickup" ? "Ambil Sendiri (Pickup)" : "Diantar ke Alamat"}
-                  </span>
-                </div>
-                {selectedOrder.deliveryMethod === "Diantar" && selectedOrder.alamat && (
-                  <div className="flex items-start justify-between gap-4">
-                    <span className="text-gray-400 shrink-0">Alamat Kirim</span>
-                    <span className="font-semibold text-gray-900 text-right">{selectedOrder.alamat}</span>
+            <div className="py-2 space-y-4 text-xs">
+              {/* Section 1: Informasi Pesanan */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-gray-900 text-xs">Informasi Pesanan</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">ID Pesanan</span>
+                    <span className="font-bold text-gray-900">#TR-KSD234DFGI</span>
                   </div>
-                )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">Tanggal Pesanan</span>
+                    <span className="font-bold text-gray-900">Senin, 20 April 2026</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">Customer</span>
+                    <span className="font-bold text-gray-900">{selectedOrder.customer}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">Nomor Telepon</span>
+                    <span className="font-bold text-gray-900">Transfer Virtual Account BCA</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">Status Pesanan</span>
+                    <span className={`font-bold text-xs ${
+                      selectedOrder.status === "Menunggu" ? "text-red-500" :
+                      selectedOrder.status === "Disiapkan" ? "text-[#22c55e]" :
+                      selectedOrder.status === "Sedang Dikirim" || selectedOrder.status === "Siap Diambil" ? "text-blue-500" :
+                      "text-emerald-500"
+                    }`}>
+                      {selectedOrder.status === "Menunggu" ? "Menunggu Konfirmasi" :
+                       selectedOrder.status === "Disiapkan" ? "Diproses" :
+                       selectedOrder.status === "Sedang Dikirim" ? "Dikirim" :
+                       selectedOrder.status === "Siap Diambil" ? "Siap Diambil" :
+                       "Selesai"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-medium">Jenis Pesanan</span>
+                    <span className="font-bold text-gray-900">Online</span>
+                  </div>
+                </div>
               </div>
 
-              {selectedOrder.items && (
-                <div>
-                  <h4 className="font-bold text-gray-700 uppercase tracking-wider mb-2.5">
-                    Item Pesanan
-                  </h4>
-                  <div className="space-y-2.5">
-                    {selectedOrder.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-xs border-b border-gray-50 pb-2.5">
-                        <div>
-                          <p className="font-semibold text-gray-800">{item.name}</p>
-                          <p className="text-gray-400">Jumlah: {item.qty}</p>
-                        </div>
-                        <span className="font-bold text-gray-900">{item.price}</span>
+              {/* Section 2: Alamat Pengiriman */}
+              <div className="pt-3 border-t border-gray-100 space-y-1.5">
+                <h4 className="font-bold text-gray-900 text-xs">Alamat Pengiriman</h4>
+                <p className="font-bold text-gray-900 text-xs">
+                  {selectedOrder.customer} (+62) 851 1234 1234
+                </p>
+                <p className="text-gray-400 text-[11px] leading-relaxed">
+                  {selectedOrder.alamat || "Jalan Buah Batu Nomor 128, Kost Buah Batu Kaya, Lantai 2, Kamar 205, Desa Anjing Besar, Kecamatan Lengkong, Kota Bandung, Jawa Barat 40264"}
+                </p>
+              </div>
+
+              {/* Section 3: Produk (3 item) */}
+              <div className="pt-3 border-t border-gray-100 space-y-3">
+                <h4 className="font-bold text-gray-900 text-xs">
+                  Produk ({selectedOrder.items?.length || 3} item)
+                </h4>
+                <div className="space-y-3">
+                  {(selectedOrder.items || [
+                    { name: "Bayam Organik Asal Jember", qty: "2 kg", price: "Rp25.000" },
+                    { name: "Wortel Penyembah Durian", qty: "2 kg", price: "Rp30.000" },
+                    { name: "Bayam Palsu Asal Ngawi", qty: "1 kg", price: "Rp15.000" },
+                  ]).map((item, idx) => (
+                    <div key={idx} className="space-y-0.5">
+                      <p className="text-gray-400 font-medium text-xs">{item.name}</p>
+                      <div className="flex justify-between items-center text-xs font-bold text-gray-900">
+                        <span>Rp12.500 x {item.qty.replace(/[^\d.]/g, "") || "2"}</span>
+                        <span>{item.price}</span>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
 
-              {/* Status Transition Buttons — Forward only, branching by delivery method */}
+              {/* Action transitions at bottom */}
               {(() => {
                 const nextStatuses = getNextStatuses(selectedOrder.status, selectedOrder.deliveryMethod);
                 if (nextStatuses.length === 0) return null;
                 return (
-                  <div className="pt-2 space-y-2.5">
-                    <Label className="text-gray-700 font-semibold block text-xs">Ubah Status Pesanan:</Label>
-                    <div className={`grid gap-3 ${nextStatuses.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-                      {nextStatuses.map((ns) => {
-                        const btnLabel =
-                          ns === "Disiapkan" ? "Siapkan Pesanan" :
-                          ns === "Siap Diambil" ? "Tandai Siap Diambil" :
-                          ns === "Sedang Dikirim" ? "Kirim Pesanan" :
-                          ns === "Selesai" ? "Selesaikan Pesanan" : ns;
-                        const btnClass =
-                          ns === "Disiapkan" ? "border-amber-200 text-amber-700 hover:bg-amber-50" :
-                          ns === "Siap Diambil" ? "border-blue-200 text-blue-700 hover:bg-blue-50" :
-                          ns === "Sedang Dikirim" ? "border-indigo-200 text-indigo-700 hover:bg-indigo-50" :
-                          "border-teal-200 text-teal-700 hover:bg-teal-50";
-                        return (
-                          <Button
-                            key={ns}
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateOrderStatus(selectedOrder.id, ns)}
-                            className={`h-10 rounded-xl text-xs font-semibold cursor-pointer ${btnClass}`}
-                          >
-                            {btnLabel}
-                          </Button>
-                        );
-                      })}
-                    </div>
+                  <div className="pt-3 border-t border-gray-100 flex gap-2">
+                    {nextStatuses.map((ns) => (
+                      <Button
+                        key={ns}
+                        onClick={() => updateOrderStatus(selectedOrder.id, ns)}
+                        className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
+                      >
+                        {ns === "Disiapkan" ? "Terima Pesanan" :
+                         ns === "Sedang Dikirim" ? "Kirim Produk" :
+                         ns === "Selesai" ? "Selesaikan Pesanan" : ns}
+                      </Button>
+                    ))}
                   </div>
                 );
               })()}
-
-              {selectedOrder.status === "Selesai" && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-xs font-semibold text-emerald-700">Pesanan ini sudah selesai.</span>
-                </div>
-              )}
             </div>
 
             <DialogFooter className="pt-3">
