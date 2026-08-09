@@ -806,22 +806,22 @@ export default function ProdukPage() {
                     <td className="py-4 text-center pr-2">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => setSelectedDetailProduct(item)}
-                          className="bg-emerald-50 hover:bg-emerald-100 text-[#1B4332] border border-emerald-200 rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                        >
-                          Detail
-                        </button>
-                        <button
                           onClick={() => openEditModal(item)}
-                          className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-4.5 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                          className="bg-[#5ec250] hover:bg-[#4cb03f] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => setDeletingProduct(item)}
-                          className="bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                          className="bg-[#e60000] hover:bg-[#cc0000] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
                         >
                           Hapus
+                        </button>
+                        <button
+                          onClick={() => setSelectedDetailProduct(item)}
+                          className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-4.5 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                        >
+                          Lihat detail
                         </button>
                       </div>
                     </td>
