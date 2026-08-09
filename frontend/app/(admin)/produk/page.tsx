@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Info,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
 import {
   Dialog,
@@ -27,6 +28,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { createProduk, updateProduk, deleteProduk } from "@/lib/api";
+import { useAuthStore } from "@/lib/useAuthStore";
 
 interface Product {
   id: number;
@@ -144,7 +147,10 @@ function computeStatusFromStock(stockNum: number): Product["status"] {
 }
 
 export default function ProdukPage() {
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
   const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [isMutating, setIsMutating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -243,23 +249,21 @@ export default function ProdukPage() {
     return { trimmedName, trimmedCategory, numericStock, numericPrice, finalUnit };
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const validated = validateForm();
     if (!validated) return;
 
     const { trimmedName, trimmedCategory, numericStock, numericPrice, finalUnit } = validated;
-
-    // Automatic status determination strictly dependent on stock
     const computedStatus = computeStatusFromStock(numericStock);
     const formattedPrice = `Rp ${numericPrice.toLocaleString("id-ID")}`;
-
-    // Extract unit label without leading slash for stock string (e.g. "/ikat" -> "ikat")
     const unitLabel = finalUnit.replace(/^\//, "");
 
+    // Optimistic local update (tampil dulu sebelum API)
     nextProdukId++;
+    const tempId = nextProdukId;
     const newProd: Product = {
-      id: nextProdukId,
+      id: tempId,
       name: trimmedName,
       category: trimmedCategory,
       stock: `${numericStock} ${unitLabel}`,
@@ -269,11 +273,34 @@ export default function ProdukPage() {
       image: formData.image,
     };
 
-    setProducts([newProd, ...products]);
+    setProducts((prev) => [newProd, ...prev]);
     setIsAddOpen(false);
     setViewMode("table");
-    toast.success(`Produk "${newProd.name}" berhasil ditambahkan!`);
     resetForm();
+
+    // Panggil API jika user adalah petani dan token tersedia
+    if (token && user?.role === "petani") {
+      setIsMutating(true);
+      try {
+        const res = await createProduk(token, {
+          nama_barang: trimmedName,
+          stok: numericStock,
+          harga: numericPrice,
+        });
+        // Update ID lokal dengan ID real dari backend
+        setProducts((prev) =>
+          prev.map((p) => (p.id === tempId ? { ...p, id: res.data.id } : p))
+        );
+        toast.success(`Produk "${trimmedName}" berhasil disimpan ke server!`);
+      } catch (err: unknown) {
+        const error = err as { message?: string };
+        toast.error(`Produk ditambahkan lokal, gagal sinkron ke server: ${error?.message ?? "Unknown error"}`);
+      } finally {
+        setIsMutating(false);
+      }
+    } else {
+      toast.success(`Produk "${newProd.name}" berhasil ditambahkan!`);
+    }
   };
 
   const resetForm = () => {
@@ -314,7 +341,7 @@ export default function ProdukPage() {
     setViewMode("edit");
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
 
@@ -322,12 +349,12 @@ export default function ProdukPage() {
     if (!validated) return;
 
     const { trimmedName, trimmedCategory, numericStock, numericPrice, finalUnit } = validated;
-
-    // Automatic status determination strictly dependent on stock
     const computedStatus = computeStatusFromStock(numericStock);
     const formattedPrice = `Rp ${numericPrice.toLocaleString("id-ID")}`;
     const unitLabel = finalUnit.replace(/^\//, "");
+    const finalStatus = formData.statusProduk === "Nonaktif" ? "Habis" : computedStatus;
 
+    // Optimistic local update
     setProducts((prev) =>
       prev.map((item) =>
         item.id === editingProduct.id
@@ -338,24 +365,55 @@ export default function ProdukPage() {
               stock: `${numericStock} ${unitLabel}`,
               price: formattedPrice,
               unit: finalUnit,
-              status: formData.statusProduk === "Nonaktif" ? "Habis" : computedStatus,
+              status: finalStatus,
               image: formData.image,
             }
           : item
       )
     );
-
-    toast.success(`Produk "${trimmedName}" berhasil diperbarui!`);
     setEditingProduct(null);
     setViewMode("table");
     resetForm();
+
+    if (token && user?.role === "petani") {
+      setIsMutating(true);
+      try {
+        await updateProduk(token, editingProduct.id, {
+          nama_barang: trimmedName,
+          stok: numericStock,
+          harga: numericPrice,
+        });
+        toast.success(`Produk "${trimmedName}" berhasil diperbarui di server!`);
+      } catch (err: unknown) {
+        const error = err as { message?: string };
+        toast.warning(`Perubahan disimpan lokal, gagal sinkron: ${error?.message ?? "Unknown error"}`);
+      } finally {
+        setIsMutating(false);
+      }
+    } else {
+      toast.success(`Produk "${trimmedName}" berhasil diperbarui!`);
+    }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deletingProduct) return;
-    setProducts((prev) => prev.filter((p) => p.id !== deletingProduct.id));
-    toast.success(`Produk "${deletingProduct.name}" berhasil dihapus`);
+    const toDelete = deletingProduct;
+    setProducts((prev) => prev.filter((p) => p.id !== toDelete.id));
     setDeletingProduct(null);
+
+    if (token && user?.role === "petani") {
+      try {
+        await deleteProduk(token, toDelete.id);
+        toast.success(`Produk "${toDelete.name}" berhasil dihapus dari server!`);
+      } catch (err: unknown) {
+        const error = err as { message?: string };
+        // Rollback jika API gagal
+        setProducts((prev) => [toDelete, ...prev]);
+        toast.error(`Gagal menghapus dari server: ${error?.message ?? "Unknown error"}`);
+      }
+    } else {
+      toast.success(`Produk "${toDelete.name}" berhasil dihapus`);
+    }
   };
 
   // ── Dedicated Page View for Tambah / Edit Produk (page edit produk.png) ──

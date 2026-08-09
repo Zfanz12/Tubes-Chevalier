@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import { Search, ArrowUpRight, Users } from "lucide-react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { Search, ArrowUpRight, Users, Loader2, AlertCircle } from "lucide-react";
+import { getTransaksi, formatRupiah, formatTanggal, mapMetodePembayaran, type ApiTransaksi } from "@/lib/api";
+import { useAuthStore } from "@/lib/useAuthStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +22,34 @@ interface TransactionItem {
   customer: string;
   method: string;
   total: string;
+  rawTotal: number; // untuk kalkulasi stat cards
   status: "Gagal" | "Berhasil" | "Pending" | "Expired";
   items?: { name: string; qty: string; price: string }[];
+}
+
+// Map API response → frontend TransactionItem
+function mapApiTransaksi(t: ApiTransaksi): TransactionItem {
+  const statusMap: Record<string, TransactionItem["status"]> = {
+    pending: "Pending",
+    processing: "Pending",
+    shipped: "Pending",
+    completed: "Berhasil",
+    cancelled: "Gagal",
+  };
+  return {
+    id: t.kode_transaksi || `#${t.id}`,
+    date: formatTanggal(t.created_at),
+    customer: t.user?.name ?? t.petani?.nama ?? "—",
+    method: mapMetodePembayaran(t.metode_pembayaran),
+    total: formatRupiah(t.total_harga),
+    rawTotal: t.total_harga,
+    status: statusMap[t.status_pesanan] ?? "Pending",
+    items: t.items?.map((item) => ({
+      name: item.produk?.nama_barang ?? `Produk #${item.produk_id}`,
+      qty: `${item.jumlah} kg`,
+      price: formatRupiah(item.harga_satuan * item.jumlah),
+    })),
+  };
 }
 
 // Helper: parse DD/MM/YYYY → Date object
@@ -38,85 +66,12 @@ const REFERENCE_TODAY = new Date();
 
 function isWithinDays(dateStr: string, days: number): boolean {
   const parsed = parseDDMMYYYY(dateStr);
-  if (!parsed) return true; // jika format salah, tetap tampilkan
+  if (!parsed) return true;
   const diffMs = REFERENCE_TODAY.getTime() - parsed.getTime();
   return diffMs >= 0 && diffMs <= days * 24 * 60 * 60 * 1000;
 }
 
-const initialTransactions: TransactionItem[] = [
-  {
-    id: "INV-12345",
-    date: "12/02/2026",
-    customer: "Reza Rahardian",
-    method: "VA Mandiri",
-    total: "Rp 130.000",
-    status: "Gagal",
-    items: [{ name: "Kangkung Fresh", qty: "10 kg", price: "Rp 130.000" }],
-  },
-  {
-    id: "INV-12346",
-    date: "12/02/2026",
-    customer: "Reza Rahardian",
-    method: "VA BCA",
-    total: "Rp 130.000",
-    status: "Gagal",
-    items: [{ name: "Sawi Putih", qty: "8 kg", price: "Rp 130.000" }],
-  },
-  {
-    id: "INV-12347",
-    date: "12/02/2026",
-    customer: "Reza Rahardian",
-    method: "VA BRI",
-    total: "Rp 20.000",
-    status: "Berhasil",
-    items: [{ name: "Bayam Organik", qty: "2 kg", price: "Rp 20.000" }],
-  },
-  {
-    id: "INV-12348",
-    date: "12/02/2026",
-    customer: "Reza Rahardian",
-    method: "VA BNI",
-    total: "Rp 30.000",
-    status: "Berhasil",
-    items: [{ name: "Tomat Segar", qty: "3 kg", price: "Rp 30.000" }],
-  },
-  {
-    id: "INV-12349",
-    date: "12/02/2026",
-    customer: "Reza Rahardian",
-    method: "QRIS",
-    total: "Rp 130.000",
-    status: "Pending",
-    items: [{ name: "Cabai Rawit", qty: "3 kg", price: "Rp 130.000" }],
-  },
-  {
-    id: "INV-12350",
-    date: "12/02/2026",
-    customer: "Reza Rahardian",
-    method: "QRIS",
-    total: "Rp 130.000",
-    status: "Expired",
-    items: [{ name: "Brokoli Hijau", qty: "4 kg", price: "Rp 130.000" }],
-  },
-  {
-    id: "INV-12351",
-    date: "12/02/2026",
-    customer: "Reza Rahardian",
-    method: "QRIS",
-    total: "Rp 130.000",
-    status: "Pending",
-    items: [{ name: "Wortel Manis", qty: "7 kg", price: "Rp 130.000" }],
-  },
-  {
-    id: "INV-12352",
-    date: "13/02/2026",
-    customer: "Andika Wijaya",
-    method: "Transfer Bank",
-    total: "Rp 250.000",
-    status: "Berhasil",
-    items: [{ name: "Pak Choy", qty: "10 kg", price: "Rp 250.000" }],
-  },
-];
+// initialTransactions dihapus — data diambil dari API
 
 const statusBadgeClass: Record<string, string> = {
   Gagal: "bg-red-50 text-red-600 border-red-200",
@@ -126,17 +81,37 @@ const statusBadgeClass: Record<string, string> = {
 };
 
 export default function TransaksiPage() {
+  const token = useAuthStore((s) => s.token);
+  const [transactions, setTransactions] = useState<TransactionItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const [topTimeFilter, setTopTimeFilter] = useState<"Semua" | "Hari Ini" | "Bulan Ini" | "Tahun Ini">("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [tableTimeFilter, setTableTimeFilter] = useState<"Semua" | "7 hari" | "30 hari">("Semua");
   const [selectedTx, setSelectedTx] = useState<TransactionItem | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const fetchData = useCallback(async () => {
+    if (!token) return;
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const data = await getTransaksi(token);
+      setTransactions(data.map(mapApiTransaksi));
+    } catch {
+      setFetchError("Gagal memuat data transaksi. Pastikan koneksi ke server aktif.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
   const itemsPerPage = 5;
 
-  // L-01 FIX: Proper date-based filtering using parseDDMMYYYY
   const filteredData = useMemo(() => {
-    return initialTransactions.filter((item) => {
+    return transactions.filter((item) => {
       const matchSearch =
         item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -152,7 +127,7 @@ export default function TransaksiPage() {
       }
       return true;
     });
-  }, [searchQuery, tableTimeFilter]);
+  }, [transactions, searchQuery, tableTimeFilter]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
 
@@ -168,44 +143,80 @@ export default function TransaksiPage() {
     return filteredData.slice(start, start + itemsPerPage);
   }, [filteredData, currentPage]);
 
-  // D-11 FIX: Hitung persentase metode pembayaran dari data aktual
+  // Hitung persentase metode pembayaran dari data API aktual
   const paymentMethodStats = useMemo(() => {
+    if (transactions.length === 0) return [];
     const counts: Record<string, number> = {};
-    initialTransactions.forEach((tx) => {
-      const method = tx.method.startsWith("VA ") ? tx.method : tx.method;
-      counts[method] = (counts[method] || 0) + 1;
+    transactions.forEach((tx) => {
+      counts[tx.method] = (counts[tx.method] || 0) + 1;
     });
-    const total = initialTransactions.length;
+    const total = transactions.length;
     const entries = Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6);
 
     return entries.map(([label, count]) => ({
       label,
-      short: label.replace("VA ", "").replace("Transfer Bank", "Transfer"),
+      short: label.replace("Transfer Bank", "Transfer"),
       val: Math.round((count / total) * 100),
     }));
-  }, []);
+  }, [transactions]);
 
-  // L-03 FIX: Stat card values — "Semua" harus lebih besar dari subset mana pun
+  // Stat cards dihitung dari data API nyata
   const statCardValues = useMemo(() => {
-    switch (topTimeFilter) {
-      case "Hari Ini":
-        return { pendapatan: "Rp 750.000", pembeli: "27", keuntungan: "Rp 50.000", pctPendapatan: "+15%", pctPembeli: "+12%", pctKeuntungan: "+15%" };
-      case "Bulan Ini":
-        return { pendapatan: "Rp 22.500.000", pembeli: "840", keuntungan: "Rp 1.850.000", pctPendapatan: "+28%", pctPembeli: "+18%", pctKeuntungan: "+22%" };
-      case "Tahun Ini":
-        return { pendapatan: "Rp 180.000.000", pembeli: "6.420", keuntungan: "Rp 14.200.000", pctPendapatan: "+32%", pctPembeli: "+24%", pctKeuntungan: "+30%" };
-      default: // "Semua"
-        return { pendapatan: "Rp 245.000.000", pembeli: "8.750", keuntungan: "Rp 18.400.000", pctPendapatan: "+35%", pctPembeli: "+28%", pctKeuntungan: "+33%" };
+    const now = new Date();
+    const filterTx = (predicate: (d: Date) => boolean) =>
+      transactions.filter((tx) => {
+        const d = parseDDMMYYYY(tx.date);
+        return d ? predicate(d) : false;
+      });
+
+    let subset = transactions;
+    if (topTimeFilter === "Hari Ini") {
+      subset = filterTx((d) => d.toDateString() === now.toDateString());
+    } else if (topTimeFilter === "Bulan Ini") {
+      subset = filterTx((d) => d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear());
+    } else if (topTimeFilter === "Tahun Ini") {
+      subset = filterTx((d) => d.getFullYear() === now.getFullYear());
     }
-  }, [topTimeFilter]);
+
+    const totalPendapatan = subset.reduce((sum, tx) => sum + tx.rawTotal, 0);
+    const totalPembeli = new Set(subset.map((tx) => tx.customer)).size;
+
+    return {
+      pendapatan: isLoading ? "—" : formatRupiah(totalPendapatan),
+      pembeli: isLoading ? "—" : String(totalPembeli),
+      keuntungan: "—", // tidak ada data margin dari API
+      pctPendapatan: "",
+      pctPembeli: "",
+      pctKeuntungan: "",
+    };
+  }, [transactions, topTimeFilter, isLoading]);
 
   // L-12 FIX: chartRange sinkron dengan topTimeFilter
   const chartRange = topTimeFilter === "Bulan Ini" || topTimeFilter === "Tahun Ini" || topTimeFilter === "Semua" ? "30d" : "7d";
 
   return (
     <div className="w-full space-y-6">
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-16 gap-3 text-gray-500">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm font-medium">Memuat data transaksi...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {fetchError && !isLoading && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+          <p className="text-sm text-red-600 font-medium">{fetchError}</p>
+          <button onClick={fetchData} className="ml-auto text-xs font-semibold text-red-600 hover:underline">Coba lagi</button>
+        </div>
+      )}
+
+      {!isLoading && (
+        <>
       {/* ── Top Time Range Filters ───────────────────────────────── */}
       <div>
         <div className="bg-[#eefcf4] p-1.5 rounded-full border border-[#c6f0d8] inline-flex items-center gap-1.5">
@@ -657,6 +668,8 @@ export default function TransaksiPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+        </>
       )}
     </div>
   );

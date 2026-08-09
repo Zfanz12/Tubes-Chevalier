@@ -1,17 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
   Users,
   ChevronRight,
-  TrendingDown,
   X,
   Package,
   Calendar,
   CreditCard,
   UserCheck,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { TestToastButton } from "@/components/ui/test-toast-button";
 import { toast } from "sonner";
+import { getTransaksi, formatRupiah, formatTanggal, mapMetodePembayaran, type ApiTransaksi } from "@/lib/api";
+import { useAuthStore } from "@/lib/useAuthStore";
 
 // ── Stat Cards Data ─────────────────────────────────────────────
 const statCards7d = [
@@ -110,8 +112,8 @@ const initialHarvestItems = [
   { name: "Brokoli", selected: false },
 ];
 
-// ── Transactions ────────────────────────────────────────────
-interface Transaction {
+// ── Transactions (sekarang diambil dari API) ──────────────────────────────────
+interface DashboardTx {
   id: string;
   date: string;
   customer: string;
@@ -121,55 +123,27 @@ interface Transaction {
   items: { name: string; qty: string; price: string }[];
 }
 
-const transactions: Transaction[] = [
-  {
-    id: "INV-12345",
-    date: "12/02/2026",
-    customer: "Reza Rahardian",
-    method: "QRIS",
-    total: "Rp 130.000",
-    status: "Menunggu",
-    items: [
-      { name: "Tomat Segar", qty: "5 kg", price: "Rp 60.000" },
-      { name: "Bayam Organik", qty: "7 kg", price: "Rp 70.000" },
-    ],
-  },
-  {
-    id: "#RM-2123",
-    date: "13/02/2026",
-    customer: "Andika Wijaya",
-    method: "Transfer Bank",
-    total: "Rp 130.000",
-    status: "Disiapkan",
-    items: [
-      { name: "Cabai Rawit", qty: "2 kg", price: "Rp 70.000" },
-      { name: "Wortel Manis", qty: "4 kg", price: "Rp 60.000" },
-    ],
-  },
-  {
-    id: "INV-12346",
-    date: "12/02/2026",
-    customer: "Reza Rahardian",
-    method: "COD",
-    total: "Rp 130.000",
-    status: "Sedang Dikirim",
-    items: [
-      { name: "Kangkung Fresh", qty: "10 kg", price: "Rp 130.000" },
-    ],
-  },
-  {
-    id: "#RM-2124",
-    date: "13/02/2026",
-    customer: "Andika Wijaya",
-    method: "Transfer Bank",
-    total: "Rp 130.000",
-    status: "Selesai",
-    items: [
-      { name: "Brokoli Hijau", qty: "3 kg", price: "Rp 90.000" },
-      { name: "Pak Choy", qty: "2 kg", price: "Rp 40.000" },
-    ],
-  },
-];
+function mapToDashboardTx(t: ApiTransaksi): DashboardTx {
+  const statusMap: Record<string, DashboardTx["status"]> = {
+    pending: "Menunggu",
+    processing: "Disiapkan",
+    shipped: "Sedang Dikirim",
+    completed: "Selesai",
+  };
+  return {
+    id: t.kode_transaksi || `#${t.id}`,
+    date: formatTanggal(t.created_at),
+    customer: t.user?.name ?? t.petani?.nama ?? "—",
+    method: mapMetodePembayaran(t.metode_pembayaran),
+    total: formatRupiah(t.total_harga),
+    status: statusMap[t.status_pesanan] ?? "Menunggu",
+    items: t.items?.map((item) => ({
+      name: item.produk?.nama_barang ?? `Produk #${item.produk_id}`,
+      qty: `${item.jumlah} kg`,
+      price: formatRupiah(item.harga_satuan * item.jumlah),
+    })) ?? [],
+  };
+}
 
 const statusBadgeClass: Record<string, string> = {
   Menunggu: "bg-red-50 text-red-600 border-red-200",
@@ -179,9 +153,26 @@ const statusBadgeClass: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const token = useAuthStore((s) => s.token);
   const [range, setRange] = useState<"7d" | "30d">("7d");
   const [harvestItems, setHarvestItems] = useState(initialHarvestItems);
-  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [selectedTx, setSelectedTx] = useState<DashboardTx | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<DashboardTx[]>([]);
+  const [txLoading, setTxLoading] = useState(true);
+
+  const fetchRecentTx = useCallback(async () => {
+    if (!token) { setTxLoading(false); return; }
+    try {
+      const data = await getTransaksi(token);
+      setRecentTransactions(data.slice(0, 4).map(mapToDashboardTx));
+    } catch {
+      // Silently fail — tabel tetap kosong
+    } finally {
+      setTxLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => { fetchRecentTx(); }, [fetchRecentTx]);
 
   const currentStatCards = range === "7d" ? statCards7d : statCards30d;
 
@@ -461,7 +452,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Recent Transactions Table — Exactly matching transaksi/page.tsx ── */}
+        {/* ── Recent Transactions Table ── */}
       <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-gray-800">
@@ -476,6 +467,14 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        {txLoading ? (
+          <div className="flex items-center justify-center py-10 gap-2 text-gray-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-xs font-medium">Memuat transaksi...</span>
+          </div>
+        ) : recentTransactions.length === 0 ? (
+          <p className="text-center text-xs text-gray-400 py-8">Belum ada transaksi.</p>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -490,7 +489,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
-              {transactions.map((tx, i) => (
+              {recentTransactions.map((tx, i) => (
                 <tr key={i} className="hover:bg-gray-50/60 transition-colors">
                   <td className="py-4 px-3 font-medium text-gray-700 text-xs">{tx.id}</td>
                   <td className="py-4 px-3 text-center text-gray-600 text-xs">{tx.date}</td>
@@ -515,6 +514,7 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* ── Transaction Detail Modal — Matching standard clean white modal design ── */}
