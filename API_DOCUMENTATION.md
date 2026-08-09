@@ -1,7 +1,7 @@
 # API Documentation - Harvesta API
 
-Dokumentasi ini mencakup seluruh endpoint API untuk project Harvesta (Tubes Chevalier).  
-Base URL default: `http://localhost/api` (atau sesuai konfigurasi Laravel local server Anda).
+Dokumentasi ini mencakup seluruh endpoint API untuk project Harvesta.  
+Base URL default: `http://localhost/api` (atau sesuai konfigurasi Laravel local serveR).
 
 ---
 
