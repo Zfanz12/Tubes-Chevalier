@@ -10,6 +10,8 @@ import {
   Plus,
   ArrowUpRight,
   MapPin,
+  XCircle,
+  Package,
 } from "lucide-react";
 import {
   Dialog,
@@ -169,8 +171,15 @@ export default function PesananPage() {
   const [timeFilter, setTimeFilter] = useState<"Semua" | "7 hari" | "30 hari">("Semua");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Modals & Multi-item order builder
+  // Confirmation Modals State (matching dialog menu ... .png)
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
+  const [confirmTerimaOrder, setConfirmTerimaOrder] = useState<OrderItem | null>(null);
+  const [confirmTolakOrder, setConfirmTolakOrder] = useState<OrderItem | null>(null);
+  const [confirmKirimOrder, setConfirmKirimOrder] = useState<OrderItem | null>(null);
+  const [confirmSelesaiOrder, setConfirmSelesaiOrder] = useState<OrderItem | null>(null);
+  const [confirmBatalOrder, setConfirmBatalOrder] = useState<OrderItem | null>(null);
+  const [alasanTolak, setAlasanTolak] = useState("Stok Habis");
+  const [alasanBatal, setAlasanBatal] = useState("Permintaan Pembeli");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newOrderCustomer, setNewOrderCustomer] = useState("");
   const [newOrderDeliveryMethod, setNewOrderDeliveryMethod] = useState<DeliveryMethod>("Pickup");
@@ -695,26 +704,41 @@ export default function PesananPage() {
                 </div>
               </div>
 
-              {/* Action transitions at bottom */}
-              {(() => {
-                const nextStatuses = getNextStatuses(selectedOrder.status, selectedOrder.deliveryMethod);
-                if (nextStatuses.length === 0) return null;
-                return (
-                  <div className="pt-3 border-t border-gray-100 flex gap-2">
-                    {nextStatuses.map((ns) => (
-                      <Button
-                        key={ns}
-                        onClick={() => updateOrderStatus(selectedOrder.id, ns)}
-                        className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
-                      >
-                        {ns === "Disiapkan" ? "Terima Pesanan" :
-                         ns === "Sedang Dikirim" ? "Kirim Produk" :
-                         ns === "Selesai" ? "Selesaikan Pesanan" : ns}
-                      </Button>
-                    ))}
-                  </div>
-                );
-              })()}
+              {/* Action transitions at bottom (triggers popup confirmation dialogs) */}
+              <div className="pt-3 border-t border-gray-100 flex gap-2">
+                {selectedOrder.status === "Menunggu" && (
+                  <>
+                    <Button
+                      onClick={() => setConfirmTolakOrder(selectedOrder)}
+                      className="flex-1 h-9 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
+                    >
+                      Tolak Pesanan
+                    </Button>
+                    <Button
+                      onClick={() => setConfirmTerimaOrder(selectedOrder)}
+                      className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
+                    >
+                      Terima Pesanan
+                    </Button>
+                  </>
+                )}
+                {selectedOrder.status === "Disiapkan" && (
+                  <Button
+                    onClick={() => setConfirmKirimOrder(selectedOrder)}
+                    className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
+                  >
+                    Kirim Produk
+                  </Button>
+                )}
+                {(selectedOrder.status === "Sedang Dikirim" || selectedOrder.status === "Siap Diambil") && (
+                  <Button
+                    onClick={() => setConfirmSelesaiOrder(selectedOrder)}
+                    className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
+                  >
+                    Konfirmasi Selesai
+                  </Button>
+                )}
+              </div>
             </div>
 
             <DialogFooter className="pt-3">
@@ -725,6 +749,172 @@ export default function PesananPage() {
                 Tutup
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── Dialog Popup Konfirmasi Terima Pesanan (dialog menu terima pesanan.png) ── */}
+      {confirmTerimaOrder && (
+        <Dialog open={!!confirmTerimaOrder} onOpenChange={(open) => !open && setConfirmTerimaOrder(null)}>
+          <DialogContent className="sm:max-w-xs bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center">
+            <div className="w-14 h-14 rounded-full bg-emerald-100/70 border border-emerald-300 text-[#1B4332] flex items-center justify-center mx-auto mb-3">
+              <Package className="w-7 h-7" />
+            </div>
+
+            <DialogTitle className="text-base font-bold text-gray-900 text-center">
+              Terima Pesanan?
+            </DialogTitle>
+            <p className="text-xs text-gray-500 text-center mt-1 leading-relaxed">
+              Pilih <span className="font-bold text-gray-800">Terima</span> untuk menerima pesanan dan mulai siapkan produk
+            </p>
+
+            <div className="flex items-center gap-3 pt-5">
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmTerimaOrder(null)}
+                className="flex-1 h-10 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-xs rounded-xl"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={() => {
+                  updateOrderStatus(confirmTerimaOrder.id, "Disiapkan");
+                  setConfirmTerimaOrder(null);
+                }}
+                className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white font-semibold text-xs rounded-xl shadow-xs"
+              >
+                Terima
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── Dialog Popup Konfirmasi Tolak Pesanan (dialog menu tolak pesanan.png) ── */}
+      {confirmTolakOrder && (
+        <Dialog open={!!confirmTolakOrder} onOpenChange={(open) => !open && setConfirmTolakOrder(null)}>
+          <DialogContent className="sm:max-w-xs bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center">
+            <div className="w-14 h-14 rounded-full bg-red-100/80 border border-red-300 text-red-600 flex items-center justify-center mx-auto mb-3">
+              <XCircle className="w-8 h-8" />
+            </div>
+
+            <DialogTitle className="text-base font-bold text-gray-900 text-center">
+              Tolak Pesanan?
+            </DialogTitle>
+            <p className="text-xs text-gray-500 text-center mt-1 leading-relaxed">
+              Pesanan akan ditolak dan pembayaran akan dikembalikan kepada pembeli
+            </p>
+
+            <div className="space-y-1.5 text-left pt-3">
+              <div className="flex justify-between items-center">
+                <Label className="text-xs font-semibold text-gray-700">Alasan Penolakan</Label>
+                <span className="text-[11px] font-semibold text-red-500">Wajib</span>
+              </div>
+              <select
+                value={alasanTolak}
+                onChange={(e) => setAlasanTolak(e.target.value)}
+                className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3 pr-8 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-red-500/20"
+              >
+                <option value="Stok Habis">Stok Habis</option>
+                <option value="Toko Tutup">Toko Tutup</option>
+                <option value="Alamat Tidak Terjangkau">Alamat Tidak Terjangkau</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3 pt-4">
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmTolakOrder(null)}
+                className="flex-1 h-10 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-xs rounded-xl"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={() => {
+                  toast.error(`Pesanan ${confirmTolakOrder.id} ditolak!`);
+                  setOrders((prev) => prev.filter((o) => o.id !== confirmTolakOrder.id));
+                  setConfirmTolakOrder(null);
+                  setSelectedOrder(null);
+                }}
+                className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-xl shadow-xs"
+              >
+                Tolak Pesanan
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── Dialog Popup Konfirmasi Kirim Produk (dialog menu kirim produk.png) ── */}
+      {confirmKirimOrder && (
+        <Dialog open={!!confirmKirimOrder} onOpenChange={(open) => !open && setConfirmKirimOrder(null)}>
+          <DialogContent className="sm:max-w-xs bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center">
+            <div className="w-14 h-14 rounded-full bg-emerald-100/70 border border-emerald-300 text-[#1B4332] flex items-center justify-center mx-auto mb-3">
+              <Truck className="w-7 h-7" />
+            </div>
+
+            <DialogTitle className="text-base font-bold text-gray-900 text-center">
+              Kirim Produk?
+            </DialogTitle>
+            <p className="text-xs text-gray-500 text-center mt-1 leading-relaxed">
+              Pilih <span className="font-bold text-gray-800">Kirim</span> jika produk sudah siap dikirim
+            </p>
+
+            <div className="flex items-center gap-3 pt-5">
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmKirimOrder(null)}
+                className="flex-1 h-10 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-xs rounded-xl"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={() => {
+                  updateOrderStatus(confirmKirimOrder.id, "Sedang Dikirim");
+                  setConfirmKirimOrder(null);
+                }}
+                className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white font-semibold text-xs rounded-xl shadow-xs"
+              >
+                Kirim
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── Dialog Popup Konfirmasi Pesanan Terkirim / Selesai (dialog menu produk diterima.png) ── */}
+      {confirmSelesaiOrder && (
+        <Dialog open={!!confirmSelesaiOrder} onOpenChange={(open) => !open && setConfirmSelesaiOrder(null)}>
+          <DialogContent className="sm:max-w-xs bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center">
+            <div className="w-14 h-14 rounded-full bg-emerald-100/70 border border-emerald-300 text-[#1B4332] flex items-center justify-center mx-auto mb-3">
+              <CheckCircle2 className="w-7 h-7" />
+            </div>
+
+            <DialogTitle className="text-base font-bold text-gray-900 text-center">
+              Konfirmasi Pesanan Terkirim?
+            </DialogTitle>
+            <p className="text-xs text-gray-500 text-center mt-1 leading-relaxed">
+              Pilih <span className="font-bold text-gray-800">Konfirmasi</span> jika pesanan sudah diterima pelanggan
+            </p>
+
+            <div className="flex items-center gap-3 pt-5">
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmSelesaiOrder(null)}
+                className="flex-1 h-10 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-xs rounded-xl"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={() => {
+                  updateOrderStatus(confirmSelesaiOrder.id, "Selesai");
+                  setConfirmSelesaiOrder(null);
+                }}
+                className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white font-semibold text-xs rounded-xl shadow-xs"
+              >
+                Konfirmasi
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       )}

@@ -1172,33 +1172,36 @@ export default function ProdukPage() {
         </Dialog>
       )}
 
-      {/* ── Modal Hapus Produk Confirmation ── */}
+      {/* ── Dialog Popup Konfirmasi Hapus Produk (dialog menu hapus produk.png) ── */}
       {deletingProduct && (
         <Dialog open={!!deletingProduct} onOpenChange={(open) => !open && setDeletingProduct(null)}>
-          <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
-            <DialogHeader className="pb-2">
-              <DialogTitle className="text-base font-bold text-gray-900">Konfirmasi Hapus Produk</DialogTitle>
-              <DialogDescription className="text-xs text-gray-500 leading-relaxed mt-1">
-                Apakah Anda yakin ingin menghapus produk <span className="font-bold text-gray-800">{deletingProduct.name}</span>? Perubahan ini tidak dapat dibatalkan.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="pt-4 gap-3 flex justify-end">
+          <DialogContent className="sm:max-w-xs bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center">
+            <div className="w-14 h-14 rounded-full bg-red-100/80 border border-red-300 text-red-600 flex items-center justify-center mx-auto mb-3">
+              <Trash2 className="w-7 h-7" />
+            </div>
+
+            <DialogTitle className="text-base font-bold text-gray-900 text-center">
+              Hapus Produk?
+            </DialogTitle>
+            <p className="text-xs text-gray-500 text-center mt-1 leading-relaxed">
+              Apakah Anda yakin ingin menghapus <span className="font-bold text-gray-800">{deletingProduct.name}</span> dari daftar produk?
+            </p>
+
+            <div className="flex items-center gap-3 pt-5">
               <Button
-                type="button"
-                variant="outline"
+                variant="secondary"
                 onClick={() => setDeletingProduct(null)}
-                className="h-10 px-5 rounded-xl font-semibold cursor-pointer"
+                className="flex-1 h-10 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-xs rounded-xl cursor-pointer"
               >
                 Batal
               </Button>
               <Button
-                type="button"
                 onClick={handleDeleteConfirm}
-                className="h-10 px-6 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-xl font-semibold cursor-pointer"
+                className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-xl shadow-xs cursor-pointer"
               >
-                Hapus Produk
+                Hapus
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       )}
