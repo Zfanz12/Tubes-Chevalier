@@ -1,14 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
-import { Search, Plus, X } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Search, Plus, X, Sprout, Calendar, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
@@ -38,7 +44,38 @@ interface PanenAkanDatang {
   status: string;
 }
 
-// ── Dummy Data ──────────────────────────────────────────────────────────────────
+// MVP: 27 SKU komoditas fast-moving yang diizinkan
+const KOMODITAS_CATALOG: { name: string; category: string }[] = [
+  { name: "Bayam Hijau", category: "Bayam" },
+  { name: "Bayam Merah", category: "Bayam" },
+  { name: "Kangkung", category: "Kangkung" },
+  { name: "Sawi Hijau", category: "Sawi" },
+  { name: "Sawi Putih", category: "Sawi" },
+  { name: "Pak Choy", category: "Pak Choy" },
+  { name: "Selada Keriting", category: "Selada" },
+  { name: "Selada Romaine", category: "Selada" },
+  { name: "Tomat Merah", category: "Tomat" },
+  { name: "Tomat Cherry", category: "Tomat" },
+  { name: "Cabai Merah Besar", category: "Cabai" },
+  { name: "Cabai Rawit", category: "Cabai" },
+  { name: "Cabai Keriting", category: "Cabai" },
+  { name: "Wortel", category: "Wortel" },
+  { name: "Brokoli", category: "Brokoli" },
+  { name: "Kembang Kol", category: "Kembang Kol" },
+  { name: "Buncis", category: "Buncis" },
+  { name: "Terong Ungu", category: "Terong" },
+  { name: "Timun", category: "Timun" },
+  { name: "Labu Siam", category: "Labu" },
+  { name: "Daun Bawang", category: "Bumbu Dapur" },
+  { name: "Seledri", category: "Bumbu Dapur" },
+  { name: "Jahe", category: "Rempah" },
+  { name: "Kunyit", category: "Rempah" },
+  { name: "Lengkuas", category: "Rempah" },
+  { name: "Pepaya", category: "Buah" },
+  { name: "Pisang", category: "Buah" },
+];
+
+// ── Initial Data ──────────────────────────────────────────────────────────────────
 
 const dummyPanenAkanDatang: PanenAkanDatang[] = [
   {
@@ -70,7 +107,9 @@ const dummyPanenAkanDatang: PanenAkanDatang[] = [
   },
 ];
 
-const productsData: Product[] = [
+let nextPanenId = 100;
+
+const initialProducts: Product[] = [
   {
     id: 1,
     name: "Kangkung Asu",
@@ -121,9 +160,9 @@ const productsData: Product[] = [
     name: "Wortel Lokal",
     kategori: "Wortel",
     jenisTanaman: "Sayuran",
-    totalberat: "-",
+    totalberat: "30 kg",
     estimasiBerat: "30 kg",
-    selisih: "-",
+    selisih: "0 kg",
     tanggal: "13/10/2026",
     tanggalTanam: "10/07/2026",
     estimasiWaktuTanam: "80 Hari",
@@ -161,41 +200,23 @@ const productsData: Product[] = [
     status: "dibawah",
     image: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=120&q=80",
   },
-  {
-    id: 7,
-    name: "Pak Choy Segar",
-    kategori: "Pak Choy",
-    jenisTanaman: "Sayuran Organik",
-    totalberat: "120 kg",
-    estimasiBerat: "110 kg",
-    selisih: "+10 kg",
-    tanggal: "13/10/2026",
-    tanggalTanam: "10/07/2026",
-    estimasiWaktuTanam: "45 Hari",
-    jumlahBibit: "450 bibit",
-    status: "diatas",
-    image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=120&q=80",
-  },
 ];
 
-// ── Status label helper ─────────────────────────────────────────────────────────
 function getStatusLabel(status: Product["status"]) {
   if (status === "diatas") return "Melebihi Estimasi";
   if (status === "sesuai") return "Sesuai Estimasi";
   return "Dibawah Estimasi";
 }
 
-// ── Detail Row Component ────────────────────────────────────────────────────────
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
       <span className="text-sm text-gray-500">{label}</span>
-      <span className="text-sm font-medium text-gray-900 text-right">{value}</span>
+      <span className="text-sm font-semibold text-gray-900 text-right">{value}</span>
     </div>
   );
 }
 
-// ── Riwayat Panen Dialog ────────────────────────────────────────────────────────
 function RiwayatPanenDialog({
   open,
   product,
@@ -209,42 +230,17 @@ function RiwayatPanenDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className="p-0 gap-0 overflow-hidden border border-emerald-100 shadow-2xl sm:max-w-md rounded-2xl"
-      >
-        {/* ── Header hijau dengan SVG pattern ── */}
-        <div className="bg-[#1B4332] px-6 py-4 relative overflow-hidden">
-          {/* Subtle pattern */}
-          <div className="absolute inset-0 pointer-events-none opacity-10">
-            <svg className="w-full h-full" viewBox="0 0 400 80" preserveAspectRatio="none">
-              <polygon points="0,0 200,0 120,80" fill="#52b788" opacity="0.6" />
-              <polygon points="200,0 400,0 320,80" fill="#74c69d" opacity="0.4" />
-              <polygon points="0,0 120,80 0,80" fill="#40916c" opacity="0.7" />
-            </svg>
-          </div>
-          <div className="relative z-10 flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-white font-semibold text-base">
-                Riwayat Panen
-              </DialogTitle>
-              <p className="text-emerald-200 text-xs mt-0.5">
-                informasi riwayat panen
-              </p>
-            </div>
-            <DialogClose
-              render={
-                <button className="text-emerald-300 hover:text-white transition rounded-full p-1.5 hover:bg-white/10 cursor-pointer outline-none" />
-              }
-            >
-              <X className="w-4 h-4" />
-              <span className="sr-only">Tutup</span>
-            </DialogClose>
-          </div>
-        </div>
+      <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
+        <DialogHeader className="pb-3 border-b border-gray-100">
+          <DialogTitle className="text-lg font-bold text-gray-900">
+            Riwayat Panen
+          </DialogTitle>
+          <DialogDescription className="text-xs text-gray-500">
+            Informasi rincian hasil panen komoditas
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* ── Body ── */}
-        <div className="px-6 py-4">
+        <div className="py-3 text-xs space-y-1">
           <DetailRow label="Nama Tanaman" value={product.name} />
           <DetailRow label="Kategori" value={product.kategori} />
           <DetailRow label="Jenis Tanaman" value={product.jenisTanaman} />
@@ -254,85 +250,218 @@ function RiwayatPanenDialog({
           <DetailRow label="Jumlah Bibit" value={product.jumlahBibit} />
           <DetailRow label="Estimasi Berat" value={product.estimasiBerat} />
           <DetailRow label="Berat Total" value={product.totalberat} />
-          <DetailRow label="Status" value={getStatusLabel(product.status)} />
+          <DetailRow label="Status Hasil Panen" value={getStatusLabel(product.status)} />
         </div>
+
+        <DialogFooter className="pt-3">
+          <Button
+            onClick={() => onOpenChange(false)}
+            className="w-full bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl h-10 text-xs font-semibold cursor-pointer shadow-xs"
+          >
+            Tutup
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-// ── Main Page ───────────────────────────────────────────────────────────────────
 export default function DataPanenPage() {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  const [selectedUpcoming, setSelectedUpcoming] = useState<PanenAkanDatang | null>(null);
+
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [newPanen, setNewPanen] = useState({
+    name: "",
+    kategori: "",
+    jenisTanaman: "Sayuran Organik",
+    totalberat: "",
+    estimasiBerat: "",
+    tanggal: new Date().toLocaleDateString("id-ID"),
+    tanggalTanam: "",
+    estimasiWaktuTanam: "30 Hari",
+    jumlahBibit: "100 bibit",
+  });
+
+  const itemsPerPage = 5;
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.kategori.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [products, searchQuery]);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
+
+  // Pagination out-of-bounds safety check
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredProducts.slice(start, start + itemsPerPage);
+  }, [filteredProducts, currentPage]);
 
   const handleLihatDetail = (product: Product) => {
     setSelectedProduct(product);
     setDialogOpen(true);
   };
 
+  const handleAddPanenSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedName = newPanen.name.trim();
+    const realBerat = parseFloat(newPanen.totalberat);
+    const estBerat = parseFloat(newPanen.estimasiBerat) || realBerat;
+
+    if (!trimmedName) {
+      toast.error("Nama tanaman tidak boleh kosong!");
+      return;
+    }
+    if (isNaN(realBerat) || realBerat <= 0) {
+      toast.error("Total berat panen harus berupa angka valid lebih dari 0!");
+      return;
+    }
+
+    // L-13 FIX: Round to avoid floating point precision issues
+    const diff = Math.round((realBerat - estBerat) * 100) / 100;
+
+    // L-14 FIX: Use tolerance for "sesuai" status (within ±0.5 kg)
+    let status: Product["status"] = "sesuai";
+    if (diff > 0.5) status = "diatas";
+    else if (diff < -0.5) status = "dibawah";
+
+    // L-15 FIX: Use counter instead of Date.now()
+    nextPanenId++;
+    const item: Product = {
+      id: nextPanenId,
+      name: trimmedName,
+      kategori: newPanen.kategori.trim() || trimmedName,
+      jenisTanaman: newPanen.jenisTanaman,
+      totalberat: `${realBerat} kg`,
+      estimasiBerat: `${estBerat} kg`,
+      selisih: `${diff >= 0 ? "+" : ""}${diff} kg`,
+      tanggal: newPanen.tanggal,
+      tanggalTanam: newPanen.tanggalTanam || "01/08/2026",
+      estimasiWaktuTanam: newPanen.estimasiWaktuTanam,
+      jumlahBibit: newPanen.jumlahBibit,
+      status,
+      image: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=120&q=80",
+    };
+
+    setProducts([item, ...products]);
+    setIsAddOpen(false);
+    toast.success(`Data panen "${item.name}" berhasil ditambahkan!`);
+
+    // L-07 FIX: Reset form setelah submit
+    setNewPanen({
+      name: "",
+      kategori: "",
+      jenisTanaman: "Sayuran Organik",
+      totalberat: "",
+      estimasiBerat: "",
+      tanggal: "",
+      tanggalTanam: "",
+      estimasiWaktuTanam: "30 Hari",
+      jumlahBibit: "100 bibit",
+    });
+  };
+
   return (
     <div className="space-y-6 w-full pb-10">
-      {/* ── Panen Akan Datang Cards ──────────────────────────────── */}
-      <span className="text-2xl font-bold text-[#2d6a4f] tracking-tight">Panen Yang Akan Datang</span>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-2">
-        {dummyPanenAkanDatang.map((item) => (
-          <div
-            key={item.id}
-            className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm flex flex-col gap-3"
-          >
-            {/* Top Row: Name + Badge */}
-            <div className="flex items-start justify-between gap-2">
-              <span className="font-bold text-gray-900 text-[15px] leading-tight">
-                {item.name}
-              </span>
-              <span className="shrink-0 bg-[#fde8f0] text-[#c7145b] text-[11px] font-semibold rounded-full px-3 py-1 whitespace-nowrap">
-                Dipanen dalam {item.hariLagi} hari
-              </span>
+      {/* ── Top Action Buttons ─────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setIsAddOpen(true)}
+          className="bg-[#1B4332] hover:bg-[#05543c] text-white text-xs font-semibold rounded-xl px-5 py-2.5 transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          Input Data Panen
+        </button>
+        <button
+          onClick={() => {
+            toast.info("Fitur Input Data Tanam siap digunakan.");
+            setIsAddOpen(true);
+          }}
+          className="bg-white border border-[#1B4332] text-[#1B4332] hover:bg-emerald-50 text-xs font-semibold rounded-xl px-5 py-2.5 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+        >
+          <Plus className="w-4 h-4" />
+          Input Data Tanam
+        </button>
+      </div>
+
+      {/* ── Panen yang Akan Datang Section ───────────────────────────── */}
+      <div className="space-y-3">
+        <h2 className="text-2xl font-bold text-[#2d6a4f] tracking-tight">Panen yang Akan Datang</h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {dummyPanenAkanDatang.map((item) => (
+            <div
+              key={item.id}
+              className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex flex-col justify-between space-y-4 hover:shadow-[0_6px_24px_rgba(3,59,42,0.10)] transition-all"
+            >
+              <div className="space-y-2">
+                {/* Top Row: Name on left, Countdown badge on right */}
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-bold text-gray-900 text-base leading-tight">
+                    {item.name}
+                  </h3>
+                  <span className="shrink-0 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-full px-3 py-1 whitespace-nowrap">
+                    Dipanen dalam {item.hariLagi} hari
+                  </span>
+                </div>
+
+                {/* Middle Subtitle: Estimasi | Umur */}
+                <p className="text-sm text-gray-500 font-medium">
+                  Estimasi {item.targetBerat}
+                  <span className="mx-2 text-gray-300">|</span>
+                  Umur {item.umur} hari
+                </p>
+              </div>
+
+              {/* Divider & Bottom Row: Date on left, Detail button on right */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-sm font-bold text-gray-800">
+                  {item.tanggal}
+                </span>
+                <button
+                  onClick={() => setSelectedUpcoming(item)}
+                  className="bg-[#1B4332] hover:bg-[#05543c] text-white text-xs font-semibold rounded-full px-5 py-2 transition cursor-pointer shadow-2xs"
+                >
+                  Lihat detail
+                </button>
+              </div>
             </div>
-
-            {/* Meta: Estimasi & Umur */}
-            <p className="text-sm text-gray-500">
-              Estimasi {item.targetBerat}
-              <span className="mx-2 text-gray-300">|</span>
-              Umur {item.umur} hari
-            </p>
-
-            {/* Divider */}
-            <div className="border-t border-gray-100" />
-
-            {/* Bottom Row: Tanggal + Button */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-700">
-                {item.tanggal}
-              </span>
-              <button className="bg-[#1B4332] hover:bg-[#05543c] text-white text-xs font-semibold rounded-full px-4 py-2 transition cursor-pointer shadow-xs">
-                Lihat detail
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* ── Main Product Table Card ─────────────────────────────── */}
       <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-5">
-        {/* Table Controls (Search & Add) */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* Search Bar */}
+        {/* Table Controls (Search) */}
+        <div className="flex items-center justify-between gap-4">
           <div className="relative w-full sm:w-80">
             <input
               type="text"
-              placeholder="Cari pesanan"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Cari data panen..."
               className="w-full bg-[#f3f4f6] text-sm text-gray-800 placeholder:text-gray-400 rounded-full pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-[#1B4332]/20 transition"
             />
             <Search className="w-4 h-4 text-gray-700 absolute right-3.5 top-1/2 -translate-y-1/2" />
           </div>
-
-          {/* Add Product Button */}
-          <button className="w-full sm:w-auto bg-[#1B4332] hover:bg-[#05543c] text-white text-xs font-semibold rounded-full px-5 py-2.5 transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer">
-            <Plus className="w-4 h-4" />
-            Tambah Produk
-          </button>
         </div>
 
         {/* Table */}
@@ -340,112 +469,256 @@ export default function DataPanenPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-100 text-xs font-semibold text-gray-500">
-                <th className="pb-3 pt-2 pl-2">Tanggal</th>
-                <th className="pb-3 pt-2 text-center">Produk</th>
-                <th className="pb-3 pt-2 text-center">Total Berat</th>
-                <th className="pb-3 pt-2 text-center">Selisih</th>
-                <th className="pb-3 pt-2 text-center">Status</th>
-                <th className="pb-3 pt-2 text-center pr-2">Aksi</th>
+                <th className="pb-3.5 pt-2 pl-2 text-center">Tanggal</th>
+                <th className="pb-3.5 pt-2 pl-2">Produk</th>
+                <th className="pb-3.5 pt-2 text-center">Total Berat</th>
+                <th className="pb-3.5 pt-2 text-center">Selisih</th>
+                <th className="pb-3.5 pt-2 text-center">Status</th>
+                <th className="pb-3.5 pt-2 text-center pr-2">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
-              {productsData.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50/50 transition">
-                  <td className="py-3.5 text-center font-medium text-gray-700 text-xs">
-                    {item.tanggal}
-                  </td>
-                  {/* Produk (Thumbnail + Name) */}
-                  <td className="py-3.5 pl-2">
-                    <div className="flex items-center gap-3">
-                      <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100 border border-gray-100">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
+              {paginatedProducts.length > 0 ? (
+                paginatedProducts.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50/50 transition">
+                    <td className="py-4 text-center font-medium text-gray-700 text-xs">
+                      {item.tanggal}
+                    </td>
+
+                    <td className="py-4 pl-2">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100 border border-gray-100">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="font-medium text-gray-800 text-sm">{item.name}</span>
                       </div>
-                      <span className="font-medium text-gray-800 text-sm">
-                        {item.name}
-                      </span>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Total Berat */}
-                  <td className="py-3.5 text-center">
-                    <span className="inline-flex items-center justify-center bg-[#e8f8f0] text-[#2d6a4f] border border-[#b7e4c7] rounded-full px-4 py-1.5 text-xs font-semibold">
-                      {item.totalberat}
-                    </span>
-                  </td>
-
-                  {/* Selisih */}
-                  <td className="py-3.5 text-center font-medium text-gray-700 text-xs">
-                    {item.selisih}
-                  </td>
-
-                  {/* Status */}
-                  <td className="py-3.5 text-center">
-                    {item.status === "dibawah" && (
-                      <span className="inline-flex items-center justify-center bg-red-100 text-red-500 border border-red-300 rounded-full px-4 py-1.5 text-xs font-bold">
-                        Dibawah Estimasi
+                    <td className="py-4 text-center">
+                      <span className="inline-flex items-center justify-center bg-[#e8f8f0] text-[#2d6a4f] border border-[#b7e4c7] rounded-full px-4 py-1 text-xs font-semibold">
+                        {item.totalberat}
                       </span>
-                    )}
-                    {item.status === "sesuai" && (
-                      <span className="inline-flex items-center justify-center bg-blue-100 text-blue-500 border border-blue-300 rounded-full px-4 py-1.5 text-xs font-semibold">
-                        Sesuai Estimasi
-                      </span>
-                    )}
-                    {item.status === "diatas" && (
-                      <span className="inline-flex items-center justify-center bg-green-100 text-green-500 border border-green-300 rounded-full px-4 py-1.5 text-xs font-semibold">
-                        Diatas Estimasi
-                      </span>
-                    )}
-                  </td>
+                    </td>
 
-                  {/* Aksi */}
-                  <td className="py-3.5 text-center pr-2">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleLihatDetail(item)}
-                        className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                      >
-                        Lihat Detail
-                      </button>
-                    </div>
+                    <td className="py-4 text-center font-medium text-gray-700 text-xs">
+                      {item.selisih}
+                    </td>
+
+                    <td className="py-4 text-center">
+                      {item.status === "dibawah" && (
+                        <span className="inline-flex items-center justify-center bg-red-100 text-red-500 border border-red-300 rounded-full px-4 py-1 text-xs font-bold">
+                          Dibawah Estimasi
+                        </span>
+                      )}
+                      {item.status === "sesuai" && (
+                        <span className="inline-flex items-center justify-center bg-blue-100 text-blue-500 border border-blue-300 rounded-full px-4 py-1 text-xs font-semibold">
+                          Sesuai Estimasi
+                        </span>
+                      )}
+                      {item.status === "diatas" && (
+                        <span className="inline-flex items-center justify-center bg-green-100 text-green-500 border border-green-300 rounded-full px-4 py-1 text-xs font-semibold">
+                          Diatas Estimasi
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="py-4 text-center pr-2">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleLihatDetail(item)}
+                          className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-5 py-2 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                        >
+                          Lihat Detail
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-400 text-xs font-medium">
+                    Tidak ada data panen ditemukan.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination Footer */}
         <div className="pt-2 flex items-center justify-end gap-3 text-xs">
-          <button className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-4 py-1.5 font-medium transition cursor-pointer shadow-xs">
-            Previous
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            className="bg-[#1B4332] hover:bg-[#05543c] disabled:opacity-40 text-white rounded-full px-4.5 py-2 font-medium transition cursor-pointer shadow-xs"
+          >
+            Sebelumnya
           </button>
           <div className="flex items-center gap-2 font-medium">
-            <span className="font-bold text-gray-900 border-b-2 border-gray-900 px-0.5 cursor-pointer">
-              1
-            </span>
-            <span className="text-gray-500 hover:text-gray-800 px-0.5 cursor-pointer">
-              2
-            </span>
-            <span className="text-gray-500 hover:text-gray-800 px-0.5 cursor-pointer">
-              3
-            </span>
-            <span className="text-gray-500 hover:text-gray-800 px-0.5 cursor-pointer">
-              4
-            </span>
-            <span className="text-gray-500 hover:text-gray-800 px-0.5 cursor-pointer">
-              5
-            </span>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+              <span
+                key={pageNum}
+                onClick={() => setCurrentPage(pageNum)}
+                className={`w-7 h-7 flex items-center justify-center rounded-full cursor-pointer transition ${
+                  currentPage === pageNum
+                    ? "bg-[#1B4332] text-white font-bold"
+                    : "text-gray-500 hover:bg-gray-100"
+                }`}
+              >
+                {pageNum}
+              </span>
+            ))}
           </div>
-          <button className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-4 py-1.5 font-medium transition cursor-pointer shadow-xs">
-            Next
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            className="bg-[#1B4332] hover:bg-[#05543c] disabled:opacity-40 text-white rounded-full px-4.5 py-2 font-medium transition cursor-pointer shadow-xs"
+          >
+            Selanjutnya
           </button>
         </div>
       </div>
+
+      {/* ── Modal Tambah Data Panen ── */}
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
+          <DialogHeader className="pb-3 border-b border-gray-100">
+            <DialogTitle className="text-lg font-bold text-gray-900">Catat Hasil Panen</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Masukkan rincian hasil panen komoditas pertanian
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddPanenSubmit} className="space-y-4 py-3 text-xs">
+            <div className="space-y-1.5">
+              <Label className="text-gray-700 font-semibold">Nama Tanaman (Komoditas)</Label>
+              <select
+                value={newPanen.name}
+                onChange={(e) => {
+                  const selected = KOMODITAS_CATALOG.find((k) => k.name === e.target.value);
+                  setNewPanen({
+                    ...newPanen,
+                    name: e.target.value,
+                    kategori: selected?.category || "",
+                  });
+                }}
+                className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
+                required
+              >
+                <option value="" disabled>Pilih komoditas...</option>
+                {KOMODITAS_CATALOG.map((k) => (
+                  <option key={k.name} value={k.name}>{k.name} — {k.category}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-gray-700 font-semibold">Total Berat Panen (kg)</Label>
+                <Input
+                  type="number"
+                  min="0.1"
+                  step="any"
+                  placeholder="Contoh: 25"
+                  value={newPanen.totalberat}
+                  onChange={(e) => setNewPanen({ ...newPanen, totalberat: e.target.value })}
+                  className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-gray-700 font-semibold">Estimasi Berat (kg)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="Contoh: 20"
+                  value={newPanen.estimasiBerat}
+                  onChange={(e) => setNewPanen({ ...newPanen, estimasiBerat: e.target.value })}
+                  className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-gray-700 font-semibold">Tanggal Panen</Label>
+                <Input
+                  type="date"
+                  value={newPanen.tanggal}
+                  onChange={(e) => setNewPanen({ ...newPanen, tanggal: e.target.value })}
+                  className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-gray-700 font-semibold">Tanggal Tanam</Label>
+                <Input
+                  type="date"
+                  value={newPanen.tanggalTanam}
+                  onChange={(e) => setNewPanen({ ...newPanen, tanggalTanam: e.target.value })}
+                  className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-4 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddOpen(false)}
+                className="h-10 px-5 rounded-xl font-semibold cursor-pointer"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                className="h-10 px-6 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl font-semibold cursor-pointer"
+              >
+                Simpan Panen
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal Detail Panen Akan Datang ── */}
+      {selectedUpcoming && (
+        <Dialog open={!!selectedUpcoming} onOpenChange={(open) => !open && setSelectedUpcoming(null)}>
+          <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
+            <DialogHeader className="pb-3 border-b border-gray-100">
+              <DialogTitle className="text-lg font-bold text-gray-900">
+                Detail Panen Mendatang
+              </DialogTitle>
+              <DialogDescription className="text-xs text-gray-500">
+                Rincian jadwal panen komoditas
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-3 text-xs space-y-1">
+              <DetailRow label="Nama Tanaman" value={selectedUpcoming.name} />
+              <DetailRow label="Estimasi Berat Target" value={selectedUpcoming.targetBerat} />
+              <DetailRow label="Jadwal Tanggal Panen" value={selectedUpcoming.tanggal} />
+              <DetailRow label="Umur Tanaman Saat Ini" value={`${selectedUpcoming.umur} Hari`} />
+              <DetailRow label="Sisa Waktu Panen" value={`${selectedUpcoming.hariLagi} Hari Lagi`} />
+              <DetailRow label="Status Kesiapan" value="Siap Dipanen Sesuai Jadwal" />
+            </div>
+
+            <DialogFooter className="pt-3">
+              <Button
+                onClick={() => setSelectedUpcoming(null)}
+                className="w-full bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl h-10 text-xs font-semibold cursor-pointer shadow-xs"
+              >
+                Tutup
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* ── Riwayat Panen Dialog ── */}
       <RiwayatPanenDialog
