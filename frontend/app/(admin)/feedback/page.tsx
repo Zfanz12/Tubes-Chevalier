@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
     Star,
     MessageSquareReply,
@@ -152,47 +152,6 @@ const dummyFeedbacks: FeedbackItem[] = [
     },
 ];
 
-// ── Stat data ──────────────────────────────────────────────────────────────────
-const stats = [
-    {
-        label: "Total Ulasan",
-        value: "247",
-        sub: "+18 minggu ini",
-        icon: MessageSquareReply,
-        color: "text-emerald-600",
-        bg: "bg-emerald-50",
-        border: "border-emerald-200",
-    },
-    {
-        label: "Rating Rata-rata",
-        value: "4.3",
-        sub: "Dari 5 bintang",
-        icon: Star,
-        color: "text-amber-500",
-        bg: "bg-amber-50",
-        border: "border-amber-200",
-    },
-    {
-        label: "Belum Dibalas",
-        value: "3",
-        sub: "Perlu segera dibalas",
-        icon: Clock,
-        color: "text-rose-500",
-        bg: "bg-rose-50",
-        border: "border-rose-200",
-    },
-    {
-        label: "Tingkat Balasan",
-        value: "91%",
-        sub: "Naik dari bulan lalu",
-        icon: TrendingUp,
-        color: "text-blue-600",
-        bg: "bg-blue-50",
-        border: "border-blue-200",
-    },
-];
-
-// ── Star Rating Component ──────────────────────────────────────────────────────
 function StarRating({ rating }: { rating: number }) {
     return (
         <div className="flex items-center gap-0.5">
@@ -206,7 +165,6 @@ function StarRating({ rating }: { rating: number }) {
     );
 }
 
-// ── Rating Badge label ─────────────────────────────────────────────────────────
 function getRatingBadge(rating: number) {
     if (rating >= 5) return { label: "Sangat Puas", className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
     if (rating >= 4) return { label: "Puas", className: "bg-blue-50 text-blue-700 border-blue-200" };
@@ -214,7 +172,6 @@ function getRatingBadge(rating: number) {
     return { label: "Perlu Perbaikan", className: "bg-rose-50 text-rose-700 border-rose-200" };
 }
 
-// ── Reply Dialog Component (shadcn Dialog) ────────────────────────────────────
 function ReplyDialog({
     open,
     feedback,
@@ -228,7 +185,6 @@ function ReplyDialog({
 }) {
     const [replyText, setReplyText] = useState("");
 
-    // Reset textarea tiap kali dialog dibuka untuk feedback baru
     React.useEffect(() => {
         if (open) setReplyText("");
     }, [open, feedback?.id]);
@@ -237,67 +193,38 @@ function ReplyDialog({
         if (!feedback || !replyText.trim()) return;
         onSubmit(feedback.id, replyText.trim());
         onOpenChange(false);
-            toast.custom(
-      (t) => (
-        <div className="flex items-center gap-3 bg-white rounded-xl shadow-lg px-4 border border-gray-100 min-w-[300px] max-w-[360px]" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          <img
-            src="/gif_success.gif"
-            alt="success"
-            style={{ width: 64, height: "auto", objectFit: "contain", flexShrink: 0, display: "block" }}
-          />
-          <p className="flex-1 text-sm font-semibold text-gray-800">Berhasil mengirim balasan</p>
-        </div>
-      ),
-      { duration: 2500, className: "!bg-transparent !shadow-none !border-0 !p-0" }
-    );
-
+        toast.custom(
+            (t) => (
+                <div className="flex items-center gap-3 bg-white rounded-xl shadow-lg px-4 border border-gray-100 min-w-[300px] max-w-[360px]" style={{ paddingTop: 0, paddingBottom: 0 }}>
+                    <img
+                        src="/gif_success.gif"
+                        alt="success"
+                        style={{ width: 64, height: "auto", objectFit: "contain", flexShrink: 0, display: "block" }}
+                    />
+                    <p className="flex-1 text-sm font-semibold text-gray-800">Berhasil mengirim balasan</p>
+                </div>
+            ),
+            { duration: 2500, className: "!bg-transparent !shadow-none !border-0 !p-0" }
+        );
     };
-    
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-        {feedback && (
-            <DialogContent
-                showCloseButton={false}
-                className="p-0 gap-0 overflow-hidden border border-emerald-100 shadow-2xl sm:max-w-lg rounded-2xl"
-            >
-                {/* ── Custom Green Header ── */}
-                <div className="bg-[#1B4332] px-6 py-4 relative overflow-hidden">
-                    {/* subtle pattern */}
-                    <div className="absolute inset-0 pointer-events-none opacity-10">
-                        <svg className="w-full h-full" viewBox="0 0 400 80" preserveAspectRatio="none">
-                            <polygon points="0,0 200,0 120,80" fill="#52b788" opacity="0.6" />
-                            <polygon points="200,0 400,0 320,80" fill="#74c69d" opacity="0.4" />
-                            <polygon points="0,0 120,80 0,80" fill="#40916c" opacity="0.7" />
-                        </svg>
-                    </div>
-                    <div className="relative z-10 flex items-center justify-between">
-                        <div>
-                            <DialogTitle className="text-white font-semibold text-base">
-                                Balas Ulasan
-                            </DialogTitle>
-                            <DialogDescription className="text-emerald-200 text-xs mt-0.5">
-                                {feedback?.customer} · {feedback?.product}
-                            </DialogDescription>
-                        </div>
-                        <DialogClose
-                            render={
-                                <button className="text-emerald-300 hover:text-white transition rounded-full p-1.5 hover:bg-white/10 cursor-pointer outline-none" />
-                            }
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                            </svg>
-                            <span className="sr-only">Tutup</span>
-                        </DialogClose>
-                    </div>
-                </div>
+            {feedback && (
+                <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
+                    <DialogHeader className="pb-3 border-b border-gray-100">
+                        <DialogTitle className="text-lg font-bold text-gray-900">
+                            Balas Ulasan
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-gray-500">
+                            {feedback?.customer} · {feedback?.product}
+                        </DialogDescription>
+                    </DialogHeader>
 
-                {/* ── Body ── */}
-                    {/* Original Review preview */}
-                <div className="p-6 space-y-5">
-                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-2">
+                    <div className="py-3 space-y-4 text-xs">
+                        <div className="bg-emerald-50/40 rounded-xl p-3.5 border border-emerald-100 space-y-2">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                     <Avatar className="w-8 h-8">
                                         <AvatarImage src={feedback.avatar} />
                                         <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-600 text-white text-xs font-bold">
@@ -305,66 +232,62 @@ function ReplyDialog({
                                         </AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <p className="text-sm font-semibold text-gray-900 leading-none">
+                                        <p className="text-xs font-semibold text-gray-900 leading-none">
                                             {feedback.customer}
                                         </p>
-                                        <p className="text-xs text-gray-400 mt-0.5">{feedback.date}</p>
+                                        <p className="text-[11px] text-gray-400 mt-0.5">{feedback.date}</p>
                                     </div>
                                 </div>
                                 <StarRating rating={feedback.rating} />
                             </div>
                             <div className="text-xs text-gray-500">
-                                Produk :{" "}
-                                <span className="font-semibold text-emerald-700">{feedback.product}</span>
+                                Produk: <span className="font-semibold text-emerald-700">{feedback.product}</span>
                             </div>
-                            <p className="text-sm text-gray-700 leading-relaxed">{feedback.comment}</p>
+                            <p className="text-xs text-gray-700 leading-relaxed">{feedback.comment}</p>
                         </div>
 
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block">
-                            Balasan Anda
-                        </label>
-                        <textarea
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            rows={4}
-                            placeholder="Tulis balasan yang ramah dan profesional..."
-                            className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20 focus:border-[#1B4332]/40 transition"
-                        />
-                        <div className="flex items-center justify-between">
-                            <p className="text-xs text-gray-400">
-                                Balas dengan profesional dan responsif 😊
-                            </p>
-                            <p className="text-xs text-gray-400">{replyText.length} karakter</p>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-700 block">
+                                Balasan Anda
+                            </label>
+                            <textarea
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                rows={4}
+                                placeholder="Tulis balasan yang ramah dan profesional..."
+                                className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20 transition"
+                            />
+                            <div className="flex items-center justify-between text-[11px] text-gray-400">
+                                <span>Balas dengan profesional dan responsif 😊</span>
+                                <span>{replyText.length} karakter</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* ── Footer ── */}
-                <DialogFooter className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-row gap-3 justify-end -mx-0 -mb-0 rounded-none">
-                    <DialogClose
-                        render={
-                            <button className="flex-1 sm:flex-none py-2.5 px-5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-100 transition cursor-pointer" />
-                        }
+                    <DialogFooter className="pt-3 gap-3">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                            className="h-10 px-5 rounded-xl font-semibold cursor-pointer text-xs"
                         >
-                        Batal
-                    </DialogClose>
-                    <button
-                        disabled={!replyText.trim()}
-                        onClick={handleSubmit}
-                        className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 py-2.5 px-5 rounded-xl bg-[#1B4332] hover:bg-[#164029] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition cursor-pointer shadow-xs"
-                    >
-                        <Send className="w-4 h-4" />
-                        Kirim Balasan
-                    </button>
-                </DialogFooter>
-            </DialogContent>
-    )}
+                            Batal
+                        </Button>
+                        <Button
+                            disabled={!replyText.trim()}
+                            onClick={handleSubmit}
+                            className="h-10 px-6 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl font-semibold cursor-pointer text-xs shadow-xs"
+                        >
+                            <Send className="w-3.5 h-3.5 mr-1" />
+                            Kirim Balasan
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            )}
         </Dialog>
     );
 }
 
-// ── Filter Dropdown ────────────────────────────────────────────────────────────
 function FilterDropdown({
     label,
     options,
@@ -404,7 +327,6 @@ function FilterDropdown({
     );
 }
 
-// ── Feedback Card ──────────────────────────────────────────────────────────────
 function FeedbackCard({
     item,
     onReply,
@@ -418,7 +340,6 @@ function FeedbackCard({
         <div className="bg-white rounded-2xl border border-emerald-100 shadow-[0_2px_12px_rgba(3,59,42,0.06)] overflow-hidden transition-shadow hover:shadow-[0_4px_20px_rgba(3,59,42,0.10)]">
             <div className="p-5">
                 <div className="flex items-start gap-4">
-                    {/* Avatar */}
                     <Avatar className="w-11 h-11 ring-2 ring-emerald-100 shrink-0">
                         <AvatarImage src={item.avatar} alt={item.customer} />
                         <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-600 text-white font-bold text-sm">
@@ -426,9 +347,7 @@ function FeedbackCard({
                         </AvatarFallback>
                     </Avatar>
 
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
-                        {/* Header Row */}
                         <div className="flex items-start justify-between gap-2">
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -436,12 +355,12 @@ function FeedbackCard({
                                         {item.customer}
                                     </span>
                                     <span
-                                        className={`inline-flex items-center border rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+                                        className={`inline-flex items-center border rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
                                     >
                                         {badge.label}
                                     </span>
                                     {item.replied && (
-                                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5 text-xs font-medium">
+                                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2.5 py-0.5 text-xs font-medium">
                                             <CheckCircle2 className="w-3 h-3" />
                                             Sudah Dibalas
                                         </span>
@@ -454,7 +373,6 @@ function FeedbackCard({
                             </span>
                         </div>
 
-                        {/* Product tag */}
                         <div className="mt-1.5 mb-2.5">
                             <span className="text-xs text-gray-500">
                                 Produk :{" "}
@@ -465,18 +383,16 @@ function FeedbackCard({
                             </span>
                         </div>
 
-                        {/* Comment */}
                         <p className="text-sm text-gray-700 leading-relaxed">{item.comment}</p>
 
-                        {/* Reply Button */}
                         {!item.replied && (
                             <div className="mt-3 flex justify-end">
                                 <button
                                     onClick={() => onReply(item)}
-                                    className="inline-flex items-center gap-1.5 bg-[#1B4332] hover:bg-[#164029] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-xs"
+                                    className="inline-flex items-center gap-1.5 bg-[#1B4332] hover:bg-[#164029] text-white rounded-full px-4.5 py-2 text-xs font-semibold transition cursor-pointer shadow-xs"
                                 >
                                     <MessageSquareReply className="w-3.5 h-3.5" />
-                                    Reply
+                                    Balas
                                 </button>
                             </div>
                         )}
@@ -484,9 +400,8 @@ function FeedbackCard({
                 </div>
             </div>
 
-            {/* Reply Section */}
             {item.replied && item.reply && (
-                <div className="bg-emerald-50/60 border-t border-emerald-100 px-5 py-3.5 ml-14">
+                <div className="bg-emerald-50/60 border-t border-emerald-100 px-5 py-4 ml-14">
                     <div className="flex items-start gap-3">
                         <div className="w-7 h-7 rounded-full bg-[#1B4332] flex items-center justify-center shrink-0">
                             <span className="text-white text-xs font-bold">H</span>
@@ -509,7 +424,6 @@ function FeedbackCard({
     );
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────────────
 export default function FeedbackPage() {
     const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(dummyFeedbacks);
     const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
@@ -519,22 +433,44 @@ export default function FeedbackPage() {
     const [sortFilter, setSortFilter] = useState("Terbaru");
     const [productFilter, setProductFilter] = useState("Semua Produk");
     const [statusFilter, setStatusFilter] = useState("Semua Status");
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const itemsPerPage = 4;
 
     const unrepliedCount = feedbacks.filter((f) => !f.replied).length;
+    const avgRating = (
+        feedbacks.reduce((acc, f) => acc + f.rating, 0) / (feedbacks.length || 1)
+    ).toFixed(1);
 
-    const filtered = feedbacks
-        .filter((f) => {
-            if (ratingFilter !== "Semua Rating" && f.rating !== parseInt(ratingFilter)) return false;
-            if (productFilter !== "Semua Produk" && f.product !== productFilter) return false;
-            if (statusFilter === "Belum Dibalas" && f.replied) return false;
-            if (statusFilter === "Sudah Dibalas" && !f.replied) return false;
-            return true;
-        })
-        .sort((a, b) => {
-            if (sortFilter === "Rating Tertinggi") return b.rating - a.rating;
-            if (sortFilter === "Rating Terendah") return a.rating - b.rating;
-            return 0;
-        });
+    const filtered = useMemo(() => {
+        return feedbacks
+            .filter((f) => {
+                if (ratingFilter !== "Semua Rating" && f.rating !== parseInt(ratingFilter)) return false;
+                if (productFilter !== "Semua Produk" && f.product !== productFilter) return false;
+                if (statusFilter === "Belum Dibalas" && f.replied) return false;
+                if (statusFilter === "Sudah Dibalas" && !f.replied) return false;
+                return true;
+            })
+            .sort((a, b) => {
+                if (sortFilter === "Rating Tertinggi") return b.rating - a.rating;
+                if (sortFilter === "Rating Terendah") return a.rating - b.rating;
+                return 0;
+            });
+    }, [feedbacks, ratingFilter, sortFilter, productFilter, statusFilter]);
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+
+    // L-08 FIX: Pagination out-of-bounds safety check
+    useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
+
+    const paginatedFeedbacks = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return filtered.slice(start, start + itemsPerPage);
+    }, [filtered, currentPage]);
 
     const handleReply = (id: string, replyText: string) => {
         setFeedbacks((prev) =>
@@ -559,11 +495,50 @@ export default function FeedbackPage() {
         ...Array.from(new Set(feedbacks.map((f) => f.product))),
     ];
 
+    const dynamicStats = [
+        {
+            label: "Total Ulasan",
+            value: `${feedbacks.length}`,
+            sub: `+${feedbacks.length > 5 ? feedbacks.length - 5 : 0} minggu ini`,
+            icon: MessageSquareReply,
+            color: "text-emerald-600",
+            bg: "bg-emerald-50",
+            border: "border-emerald-200",
+        },
+        {
+            label: "Rating Rata-rata",
+            value: avgRating,
+            sub: "Dari 5 bintang",
+            icon: Star,
+            color: "text-amber-500",
+            bg: "bg-amber-50",
+            border: "border-amber-200",
+        },
+        {
+            label: "Belum Dibalas",
+            value: `${unrepliedCount}`,
+            sub: unrepliedCount > 0 ? "Perlu segera dibalas" : "Semua ulasan sudah dibalas",
+            icon: Clock,
+            color: "text-rose-500",
+            bg: "bg-rose-50",
+            border: "border-rose-200",
+        },
+        {
+            label: "Tingkat Balasan",
+            value: `${Math.round(((feedbacks.length - unrepliedCount) / (feedbacks.length || 1)) * 100)}%`,
+            sub: "Naik dari bulan lalu",
+            icon: TrendingUp,
+            color: "text-blue-600",
+            bg: "bg-blue-50",
+            border: "border-blue-200",
+        },
+    ];
+
     return (
         <div className="w-full space-y-6">
             {/* ── Stat Cards ─────────────────────────────────────────────────────── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((stat) => (
+                {dynamicStats.map((stat) => (
                     <div
                         key={stat.label}
                         className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-200 space-y-3"
@@ -600,31 +575,46 @@ export default function FeedbackPage() {
                             label="Semua Rating"
                             options={["Semua Rating", "5", "4", "3", "2", "1"]}
                             value={ratingFilter}
-                            onChange={setRatingFilter}
+                            onChange={(val) => {
+                                setRatingFilter(val);
+                                setCurrentPage(1);
+                            }}
                         />
                         <FilterDropdown
                             label="Terbaru"
                             options={["Terbaru", "Rating Tertinggi", "Rating Terendah"]}
                             value={sortFilter}
-                            onChange={setSortFilter}
+                            onChange={(val) => {
+                                setSortFilter(val);
+                                setCurrentPage(1);
+                            }}
                         />
                         <FilterDropdown
                             label="Semua Produk"
                             options={uniqueProducts}
                             value={productFilter}
-                            onChange={setProductFilter}
+                            onChange={(val) => {
+                                setProductFilter(val);
+                                setCurrentPage(1);
+                            }}
                         />
                         <FilterDropdown
                             label="Semua Status"
                             options={["Semua Status", "Belum Dibalas", "Sudah Dibalas"]}
                             value={statusFilter}
-                            onChange={setStatusFilter}
+                            onChange={(val) => {
+                                setStatusFilter(val);
+                                setCurrentPage(1);
+                            }}
                         />
                     </div>
 
                     {unrepliedCount > 0 && (
                         <button
-                            onClick={() => setStatusFilter("Belum Dibalas")}
+                            onClick={() => {
+                                setStatusFilter("Belum Dibalas");
+                                setCurrentPage(1);
+                            }}
                             className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-full px-4 py-2 text-xs font-semibold transition cursor-pointer shrink-0"
                         >
                             <Clock className="w-3.5 h-3.5" />
@@ -635,7 +625,7 @@ export default function FeedbackPage() {
 
                 {/* Feedback List */}
                 <div className="p-5 space-y-4">
-                    {filtered.length === 0 ? (
+                    {paginatedFeedbacks.length === 0 ? (
                         <div className="text-center py-16 text-gray-400">
                             <MessageSquareReply className="w-12 h-12 mx-auto mb-3 opacity-30" />
                             <p className="font-medium">Tidak ada ulasan ditemukan</p>
@@ -644,7 +634,7 @@ export default function FeedbackPage() {
                             </p>
                         </div>
                     ) : (
-                        filtered.map((item) => (
+                        paginatedFeedbacks.map((item) => (
                             <FeedbackCard
                                 key={item.id}
                                 item={item}
@@ -660,33 +650,43 @@ export default function FeedbackPage() {
                 {/* Pagination Footer */}
                 <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-3 text-xs">
                     <span className="text-gray-400">
-                        Menampilkan {filtered.length} dari {feedbacks.length} ulasan
+                        Menampilkan {paginatedFeedbacks.length} dari {filtered.length} ulasan
                     </span>
                     <div className="flex items-center gap-2">
-                        <button className="bg-[#1B4332] hover:bg-[#164029] text-white rounded-full px-4 py-1.5 font-medium transition cursor-pointer shadow-xs">
-                            Previous
+                        <button
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            className="bg-[#1B4332] hover:bg-[#164029] disabled:opacity-40 text-white rounded-full px-4.5 py-2 font-medium transition cursor-pointer shadow-xs"
+                        >
+                            Sebelumnya
                         </button>
                         <div className="flex items-center gap-1.5 font-medium">
-                            {[1, 2, 3].map((p) => (
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                                 <span
-                                    key={p}
-                                    className={`w-7 h-7 flex items-center justify-center rounded-full cursor-pointer transition ${p === 1
+                                    key={pageNum}
+                                    onClick={() => setCurrentPage(pageNum)}
+                                    className={`w-7 h-7 flex items-center justify-center rounded-full cursor-pointer transition ${
+                                        pageNum === currentPage
                                             ? "bg-[#1B4332] text-white font-bold"
                                             : "text-gray-500 hover:bg-gray-100"
-                                        }`}
+                                    }`}
                                 >
-                                    {p}
+                                    {pageNum}
                                 </span>
                             ))}
                         </div>
-                        <button className="bg-[#1B4332] hover:bg-[#164029] text-white rounded-full px-4 py-1.5 font-medium transition cursor-pointer shadow-xs">
-                            Next
+                        <button
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            className="bg-[#1B4332] hover:bg-[#164029] disabled:opacity-40 text-white rounded-full px-4.5 py-2 font-medium transition cursor-pointer shadow-xs"
+                        >
+                            Selanjutnya
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Reply Dialog (shadcn Dialog) */}
+            {/* Reply Dialog */}
             <ReplyDialog
                 open={dialogOpen}
                 feedback={selectedFeedback}
