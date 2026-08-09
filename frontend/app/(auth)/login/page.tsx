@@ -68,8 +68,7 @@ export default function LoginPage() {
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg(null);
-    setIsLoading(true);
+    console.log("Login submitted:", { email, password });
 
     try {
       const res = await apiFetch<SendOtpResponse>("/send-otp", {
@@ -142,7 +141,7 @@ export default function LoginPage() {
     <div className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-hidden">
       {/* Background Image */}
       <Image
-        src="/bg4.jpg"
+        src="/bg-auth.jpg"
         alt="Background"
         fill
         priority
@@ -159,7 +158,7 @@ export default function LoginPage() {
       </Link>
 
       {/* Login Card */}
-      <Card className="w-full max-w-[480px] bg-[#F7F8F7] rounded-[28px] border-none shadow-2xl p-7 sm:p-10">
+      <Card className="w-full max-w-[480px] bg-[#F7F8F7] rounded-[28px] border-none shadow-2xl p-7 sm:p-10 space-y-6">
         <div>
           <h1 className="text-2xl sm:text-[30px] font-bold tracking-tight">
             <span className="text-[#48C764]">Login</span>{" "}
