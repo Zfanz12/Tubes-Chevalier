@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
-import { toast } from "sonner";
+import { showToast } from "@/lib/custom-toast";
 
 interface ApiError {
   message?: string;
@@ -98,7 +98,7 @@ export default function RegisterPage() {
       setOtpPreview(res.otp_preview ?? null);
       setStep("otp");
       startCountdown();
-      toast.success("Registrasi berhasil! Silakan verifikasi OTP.");
+      showToast("Registrasi berhasil! Silakan verifikasi OTP.", "success");
     } catch (err: unknown) {
       const error = err as ApiError;
       if (error?.errors) {
@@ -122,10 +122,7 @@ export default function RegisterPage() {
       });
 
       setAuth(res.user, res.access_token);
-      toast.success(`Selamat datang, ${res.user.name}! 🎉`, {
-        description: "Akun berhasil dibuat. Selamat bergabung!",
-        duration: 4000,
-      });
+      showToast(`Selamat datang, ${res.user.name}!`, "party");
       router.push("/dashboard");
     } catch (err: unknown) {
       const error = err as ApiError;
@@ -149,7 +146,7 @@ export default function RegisterPage() {
 
       setOtpPreview(res.otp_preview ?? null);
       startCountdown();
-      toast.success("OTP baru berhasil dikirim!");
+      showToast("OTP baru berhasil dikirim!", "success");
     } catch (err: unknown) {
       const error = err as ApiError;
       setErrorMsg(error?.message ?? "Gagal mengirim ulang OTP.");

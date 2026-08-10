@@ -27,7 +27,7 @@ import {
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import { showToast } from "@/lib/custom-toast";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface FeedbackReply {
@@ -193,19 +193,7 @@ function ReplyDialog({
         if (!feedback || !replyText.trim()) return;
         onSubmit(feedback.id, replyText.trim());
         onOpenChange(false);
-        toast.custom(
-            (t) => (
-                <div className="flex items-center gap-3 bg-white rounded-xl shadow-lg px-4 border border-gray-100 min-w-[300px] max-w-[360px]" style={{ paddingTop: 0, paddingBottom: 0 }}>
-                    <img
-                        src="/gif_success.gif"
-                        alt="success"
-                        style={{ width: 64, height: "auto", objectFit: "contain", flexShrink: 0, display: "block" }}
-                    />
-                    <p className="flex-1 text-sm font-semibold text-gray-800">Berhasil mengirim balasan</p>
-                </div>
-            ),
-            { duration: 2500, className: "!bg-transparent !shadow-none !border-0 !p-0" }
-        );
+        showToast("Berhasil mengirim balasan", "success");
     };
 
     return (

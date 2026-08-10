@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2, LogOut, Settings, User } from "lucide-react";
-import { toast } from "sonner";
+import { showToast } from "@/lib/custom-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -27,10 +27,7 @@ import {
 import { useAuthStore } from "@/lib/useAuthStore";
 import { apiFetch } from "@/lib/api";
 
-// ── Animated wave icon untuk toast ─────────────────────────────────────────
-const WaveIcon = () => (
-  <span className="animate-wave text-xl leading-none">👋</span>
-);
+
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -87,10 +84,7 @@ export default function Topbar() {
       // Tetap lanjutkan logout meski API gagal
     } finally {
       clearAuth();
-      toast.success("Berhasil keluar, Sampai jumpa lagi!", {
-        icon: <WaveIcon />,
-        duration: 3000,
-      });
+      showToast("Berhasil keluar, Sampai jumpa lagi!", "hello");
       router.push("/login");
       setIsLoggingOut(false);
     }
@@ -156,9 +150,9 @@ export default function Topbar() {
                     <span className="font-semibold text-sm">
                       {user?.name ?? "User"}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    {/* <span className="text-xs text-muted-foreground">
                       {user?.email ?? ""}
-                    </span>
+                    </span> */}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="my-2" />

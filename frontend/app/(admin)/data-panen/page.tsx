@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { showToast } from "@/lib/custom-toast";
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
@@ -301,10 +301,10 @@ export default function DataPanenPage() {
   const handleAddTanamSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTanam.name.trim()) {
-      toast.error("Nama tanaman tidak boleh kosong!");
+      showToast("Nama tanaman tidak boleh kosong!", "error");
       return;
     }
-    toast.success(`Data tanam "${newTanam.name}" berhasil dicatat!`);
+    showToast(`Data tanam "${newTanam.name}" berhasil dicatat!`, "success");
     setIsAddTanamOpen(false);
     setNewTanam({
       name: "",
@@ -352,11 +352,11 @@ export default function DataPanenPage() {
     const estBerat = parseFloat(newPanen.estimasiBerat) || realBerat;
 
     if (!trimmedName) {
-      toast.error("Nama tanaman tidak boleh kosong!");
+      showToast("Nama tanaman tidak boleh kosong!", "error");
       return;
     }
     if (isNaN(realBerat) || realBerat <= 0) {
-      toast.error("Total berat panen harus berupa angka valid lebih dari 0!");
+      showToast("Total berat panen harus berupa angka valid lebih dari 0!", "error");
       return;
     }
 
@@ -388,7 +388,7 @@ export default function DataPanenPage() {
 
     setProducts([item, ...products]);
     setIsAddOpen(false);
-    toast.success(`Data panen "${item.name}" berhasil ditambahkan!`);
+    showToast(`Data panen "${item.name}" berhasil ditambahkan!`, "success");
 
     // L-07 FIX: Reset form setelah submit
     setNewPanen({
@@ -879,7 +879,7 @@ export default function DataPanenPage() {
             <DialogFooter className="pt-3 flex flex-col gap-2">
               <Button
                 onClick={() => {
-                  toast.success(`Panen sekarang berhasil dicatat untuk ${selectedUpcoming.name}!`);
+                  showToast(`Panen sekarang berhasil dicatat untuk ${selectedUpcoming.name}!`, "success");
                   setSelectedUpcoming(null);
                 }}
                 className="w-full bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl h-10 text-xs font-bold cursor-pointer shadow-xs"

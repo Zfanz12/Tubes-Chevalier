@@ -12,11 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/lib/useAuthStore";
-import { toast } from "sonner";
+import { showToast } from "@/lib/custom-toast";
 
-const WaveIcon = () => (
-  <span className="animate-wave text-xl leading-none">👋</span>
-);
+
 
 type Step = "phone" | "otp";
 
@@ -68,7 +66,6 @@ export default function LoginPage() {
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login submitted:", { email, password });
 
     try {
       const res = await apiFetch<SendOtpResponse>("/send-otp", {
@@ -79,7 +76,7 @@ export default function LoginPage() {
       setOtpPreview(res.otp_preview ?? null);
       setStep("otp");
       startCountdown();
-      toast.success("OTP berhasil dikirim ke WhatsApp Anda!");
+      showToast("OTP berhasil dikirim ke WhatsApp Anda!", "success");
     } catch (err: unknown) {
       const error = err as { message?: string };
       setErrorMsg(error?.message ?? "Terjadi kesalahan. Coba lagi.");
@@ -100,10 +97,7 @@ export default function LoginPage() {
       });
 
       setAuth(res.user, res.access_token);
-      toast.success(`Selamat datang, ${res.user.name}`, {
-        icon: <WaveIcon />,
-        duration: 4000,
-      });
+      showToast(`Selamat datang, ${res.user.name}`, "hello");
 
       router.push("/dashboard");
     } catch (err: unknown) {
@@ -128,7 +122,7 @@ export default function LoginPage() {
 
       setOtpPreview(res.otp_preview ?? null);
       startCountdown();
-      toast.success("OTP baru berhasil dikirim!");
+      showToast("OTP baru berhasil dikirim!", "success");
     } catch (err: unknown) {
       const error = err as { message?: string };
       setErrorMsg(error?.message ?? "Gagal mengirim ulang OTP.");

@@ -27,7 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { showToast } from "@/lib/custom-toast";
 import { createProduk, updateProduk, deleteProduk } from "@/lib/api";
 import { useAuthStore } from "@/lib/useAuthStore";
 
@@ -221,19 +221,19 @@ export default function ProdukPage() {
     const numericPrice = parseFloat(formData.price.replace(/[^\d]/g, ""));
 
     if (!trimmedName) {
-      toast.error("Nama produk tidak boleh kosong!");
+      showToast("Nama produk tidak boleh kosong!", "error");
       return false;
     }
     if (!trimmedCategory) {
-      toast.error("Kategori produk tidak boleh kosong!");
+      showToast("Kategori produk tidak boleh kosong!", "error");
       return false;
     }
     if (isNaN(numericStock) || numericStock < 0) {
-      toast.error("Jumlah stok harus berupa angka valid (minimal 0)!");
+      showToast("Jumlah stok harus berupa angka valid (minimal 0)!", "error");
       return false;
     }
     if (isNaN(numericPrice) || numericPrice <= 0) {
-      toast.error("Harga produk harus berupa angka valid lebih dari 0!");
+      showToast("Harga produk harus berupa angka valid lebih dari 0!", "error");
       return false;
     }
 
@@ -291,15 +291,15 @@ export default function ProdukPage() {
         setProducts((prev) =>
           prev.map((p) => (p.id === tempId ? { ...p, id: res.data.id } : p))
         );
-        toast.success(`Produk "${trimmedName}" berhasil disimpan ke server!`);
+        showToast(`Produk "${trimmedName}" berhasil disimpan ke server!`, "success");
       } catch (err: unknown) {
         const error = err as { message?: string };
-        toast.error(`Produk ditambahkan lokal, gagal sinkron ke server: ${error?.message ?? "Unknown error"}`);
+        showToast(`Produk ditambahkan lokal, gagal sinkron ke server: ${error?.message ?? "Unknown error"}`, "error");
       } finally {
         setIsMutating(false);
       }
     } else {
-      toast.success(`Produk "${newProd.name}" berhasil ditambahkan!`);
+      showToast(`Produk "${newProd.name}" berhasil ditambahkan!`, "success");
     }
   };
 
@@ -383,15 +383,15 @@ export default function ProdukPage() {
           stok: numericStock,
           harga: numericPrice,
         });
-        toast.success(`Produk "${trimmedName}" berhasil diperbarui di server!`);
+        showToast(`Produk "${trimmedName}" berhasil diperbarui di server!`, "success");
       } catch (err: unknown) {
         const error = err as { message?: string };
-        toast.warning(`Perubahan disimpan lokal, gagal sinkron: ${error?.message ?? "Unknown error"}`);
+        showToast(`Perubahan disimpan lokal, gagal sinkron: ${error?.message ?? "Unknown error"}`, "error");
       } finally {
         setIsMutating(false);
       }
     } else {
-      toast.success(`Produk "${trimmedName}" berhasil diperbarui!`);
+      showToast(`Produk "${trimmedName}" berhasil diperbarui!`, "success");
     }
   };
 
@@ -404,15 +404,15 @@ export default function ProdukPage() {
     if (token && user?.role === "petani") {
       try {
         await deleteProduk(token, toDelete.id);
-        toast.success(`Produk "${toDelete.name}" berhasil dihapus dari server!`);
+        showToast(`Produk "${toDelete.name}" berhasil dihapus dari server!`, "success");
       } catch (err: unknown) {
         const error = err as { message?: string };
         // Rollback jika API gagal
         setProducts((prev) => [toDelete, ...prev]);
-        toast.error(`Gagal menghapus dari server: ${error?.message ?? "Unknown error"}`);
+        showToast(`Gagal menghapus dari server: ${error?.message ?? "Unknown error"}`, "error");
       }
     } else {
-      toast.success(`Produk "${toDelete.name}" berhasil dihapus`);
+      showToast(`Produk "${toDelete.name}" berhasil dihapus`, "success");
     }
   };
 

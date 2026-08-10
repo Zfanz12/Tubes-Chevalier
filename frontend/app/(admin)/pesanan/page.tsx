@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { showToast } from "@/lib/custom-toast";
 
 // US-17: Status pesanan sesuai dokumen MVP
 type OrderStatus = "Menunggu" | "Disiapkan" | "Siap Diambil" | "Sedang Dikirim" | "Selesai";
@@ -233,13 +233,13 @@ export default function PesananPage() {
       }
       return prev;
     });
-    toast.success(`Status pesanan ${id} diperbarui menjadi "${newStatus}"`);
+    showToast(`Status pesanan ${id} diperbarui menjadi "${newStatus}"`, "success");
   };
 
   const handleAddItemToOrder = () => {
     const numericQty = parseFloat(itemQty);
     if (isNaN(numericQty) || numericQty <= 0) {
-      toast.error("Jumlah harus berupa angka valid (minimal 1)!");
+      showToast("Jumlah harus berupa angka valid (minimal 1)!", "error");
       return;
     }
     const unitPrice = 12500;
@@ -249,13 +249,13 @@ export default function PesananPage() {
       ...prev,
       { name: selectedCatalogItem, qty: `${numericQty} kg`, price: formattedPrice },
     ]);
-    toast.success(`Item "${selectedCatalogItem}" ditambahkan ke rincian pesanan`);
+    showToast(`Item "${selectedCatalogItem}" ditambahkan ke rincian pesanan`, "success");
   };
 
   const handleAddOrderSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (addedItems.length === 0) {
-      toast.error("Tambahkan minimal 1 produk ke rincian pesanan!");
+      showToast("Tambahkan minimal 1 produk ke rincian pesanan!", "error");
       return;
     }
 
@@ -831,7 +831,7 @@ export default function PesananPage() {
               </Button>
               <Button
                 onClick={() => {
-                  toast.error(`Pesanan ${confirmTolakOrder.id} ditolak!`);
+                  showToast(`Pesanan ${confirmTolakOrder.id} ditolak!`, "error");
                   setOrders((prev) => prev.filter((o) => o.id !== confirmTolakOrder.id));
                   setConfirmTolakOrder(null);
                   setSelectedOrder(null);

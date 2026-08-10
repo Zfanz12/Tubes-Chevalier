@@ -24,7 +24,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { TestToastButton } from "@/components/ui/test-toast-button";
-import { toast } from "sonner";
+import { showToast } from "@/lib/custom-toast";
 import { getTransaksi, formatRupiah, formatTanggal, mapMetodePembayaran, type ApiTransaksi } from "@/lib/api";
 import { useAuthStore } from "@/lib/useAuthStore";
 
@@ -181,10 +181,11 @@ export default function DashboardPage() {
       prev.map((item) => {
         if (item.name === name) {
           const nextSelected = !item.selected;
-          toast.success(
+          showToast(
             nextSelected
               ? `${name} ditandai siap panen hari ini`
-              : `${name} dihapus dari daftar panen hari ini`
+              : `${name} dihapus dari daftar panen hari ini`,
+            "success"
           );
           return { ...item, selected: nextSelected };
         }
