@@ -1,5 +1,8 @@
 import { toast } from "sonner";
 
+// tambahin varian disini (warning, info dll) 
+// nanti tinggal ditambahin gif & size nya di bawah
+
 type ToastVariant = "success" | "error" | "hello" | "party";
 
 const GIF_MAP: Record<ToastVariant, string> = {
