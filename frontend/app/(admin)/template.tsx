@@ -5,15 +5,15 @@ import { usePathname } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Skeleton Component Switcher ─────────────────────────────────
-// Option A: 100% Official Shadcn UI Skeleton (Active)
-const SkeletonWave = ({ className }: { className?: string }) => (
-  <Skeleton className={className} />
-);
-
-// Option B: Custom Wave / Shimmer Animation (Commented for easy revert)
+// Option A: 100% Official Shadcn UI Skeleton (Commented)
 // const SkeletonWave = ({ className }: { className?: string }) => (
-//   <div className={`animate-shimmer rounded-lg ${className || ""}`} />
+//   <Skeleton className={className} />
 // );
+
+// Option B: Custom Wave / Shimmer Animation (Active)
+const SkeletonWave = ({ className }: { className?: string }) => (
+  <div className={`animate-shimmer rounded-lg ${className || ""}`} />
+);
 
 // ── 1. Dashboard Skeleton (1:1 Match) ───────────────────────────
 const DashboardSkeleton = () => (
