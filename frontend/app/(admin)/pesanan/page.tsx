@@ -171,9 +171,7 @@ export default function PesananPage() {
   const [newOrderAlamat, setNewOrderAlamat] = useState("");
   const [selectedCatalogItem, setSelectedCatalogItem] = useState("Bayam Murid Siswoyo");
   const [itemQty, setItemQty] = useState("2");
-  const [addedItems, setAddedItems] = useState<{ name: string; qty: string; price: string }[]>([
-    { name: "Bayam Organik Asal Jember", qty: "2 kg", price: "Rp 25.000" },
-  ]);
+  const [addedItems, setAddedItems] = useState<{ name: string; qty: string; price: string }[]>([]);
 
   const itemsPerPage = 5;
 
@@ -283,7 +281,7 @@ export default function PesananPage() {
     setIsAddOpen(false);
     setNewOrderCustomer("");
     setNewOrderAlamat("");
-    setAddedItems([{ name: "Bayam Organik Asal Jember", qty: "2 kg", price: "Rp 25.000" }]);
+    setAddedItems([]);
     showToast(`Pesanan ${order.id} berhasil dicatat!`, "success");
   };
 

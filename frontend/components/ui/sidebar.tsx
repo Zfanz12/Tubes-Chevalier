@@ -133,19 +133,7 @@ export default function Sidebar() {
             </Link>
           );
 
-          return (
-            <Tooltip key={item.name}>
-              <TooltipTrigger render={linkContent} />
-              {!isOpen && (
-                <TooltipContent
-                  side="right"
-                  className="bg-[#1B4332] text-white border-[#06543c]"
-                >
-                  {item.name}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          );
+          return <React.Fragment key={item.name}>{linkContent}</React.Fragment>;
         })}
       </nav>
 
