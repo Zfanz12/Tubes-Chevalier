@@ -15,15 +15,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { apiFetch } from "@/lib/api";
 
@@ -38,11 +35,13 @@ const pageTitles: Record<string, string> = {
   "/chat": "Chat",
   "/feedback": "Feedback",
   "/insight": "Insight",
+  "/profile": "Profil Saya",
 };
 
 export default function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const isProfile = pathname === "/profile";
   const title = pageTitles[pathname] || "Dashboard";
 
   // ── Auth state dari store (versi kita) ─────────────────────────────────
@@ -92,7 +91,13 @@ export default function Topbar() {
 
   return (
     <>
-      <header className="bg-[#1B4332] text-white ml-8 px-8 pt-4 pb-4 rounded-bl-[36px] flex items-start justify-between shrink-0 shadow-sm transition-all duration-300 relative overflow-hidden">
+      <header 
+        className={`bg-[#1B4332] text-white ml-8 px-8 rounded-bl-[36px] flex items-start justify-between shrink-0 shadow-sm relative overflow-hidden transition-all duration-500 ease-in-out transform origin-top ${
+          isProfile 
+            ? "-translate-y-full opacity-0 max-h-0 py-0 border-none shadow-none pointer-events-none mb-0" 
+            : "translate-y-0 opacity-100 max-h-48 pt-4 pb-4"
+        }`}
+      >
         {/* Low Poly Geometric Background (versi teman) */}
         <div className="absolute inset-0 pointer-events-none opacity-15">
           <svg
@@ -131,7 +136,7 @@ export default function Topbar() {
                   className="flex items-center gap-2.5 bg-[#4c7766]/80 hover:bg-[#588774] transition px-3.5 py-1.5 rounded-full text-white cursor-pointer outline-none shadow-xs border border-emerald-600/30"
                 >
                   <Avatar className="w-8 h-8 ring-1 ring-white/30">
-                    <AvatarImage src="" alt={user?.name ?? "User"} />
+                    <AvatarImage src={user?.avatar || ""} alt={user?.name ?? "User"} />
                     <AvatarFallback className="bg-emerald-800 text-emerald-200 text-xs font-semibold">
                       {user ? getInitials(user.name) : "??"}
                     </AvatarFallback>
@@ -156,7 +161,7 @@ export default function Topbar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="my-2" />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/profile")}>
                   <User className="w-4 h-4" />
                   Profil Saya
                 </DropdownMenuItem>
@@ -180,29 +185,40 @@ export default function Topbar() {
         </div>
       </header>
 
-      {/* Logout Confirmation Dialog */}
-      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Konfirmasi Keluar</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah kamu yakin ingin keluar dari akun ini? Kamu perlu login
-              kembali untuk mengakses dashboard.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoggingOut}>Batal</AlertDialogCancel>
-            <AlertDialogAction
+      {/* Logout Confirmation Dialog (Matches Figma precisely) */}
+      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-center flex flex-col items-center">
+          <div className="w-16 h-16 bg-[#fdd8d8] rounded-full flex items-center justify-center border-[1.5px] border-red-500 mb-3">
+            {/* Custom Logout SVG resembling figma */}
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M15 4H5C4.44772 4 4 4.44772 4 5V19C4 19.5523 4.44772 20 5 20H15" stroke="#ff0000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M11 12H20M20 12L16 8M20 12L16 16" stroke="#ff0000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <DialogTitle className="text-lg font-bold text-gray-900 mb-1">Keluar dari Akun?</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 mb-4 font-medium leading-relaxed max-w-[340px]">
+            Tindakan ini akan membuat Anda keluar dari Harvesta
+          </DialogDescription>
+          
+          <div className="flex w-full gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowLogoutDialog(false)}
+              disabled={isLoggingOut}
+              className="flex-1 rounded-xl h-11 bg-[#e2e2e2] border-transparent hover:bg-[#d1d1d1] text-gray-500 font-bold text-sm"
+            >
+              Batal
+            </Button>
+            <Button 
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="bg-red-600 hover:bg-red-700"
+              className="flex-1 rounded-xl h-11 bg-[#f00000] hover:bg-[#d00000] text-white font-bold text-sm"
             >
-              {isLoggingOut ? "Keluar..." : "Ya, Keluar"}
-              {isLoggingOut && <Loader2 className="w-4 h-4 animate-spin" />}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Keluar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

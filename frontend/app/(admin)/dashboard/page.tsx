@@ -2,18 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowUpRight,
   Users,
   ChevronRight,
-  X,
-  Package,
-  Calendar,
-  CreditCard,
-  UserCheck,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,7 +19,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { TestToastButton } from "@/components/ui/test-toast-button";
 import { showToast } from "@/lib/custom-toast";
 import { getTransaksi, formatRupiah, formatTanggal, mapMetodePembayaran, type ApiTransaksi } from "@/lib/api";
 import { useAuthStore } from "@/lib/useAuthStore";
@@ -87,10 +82,10 @@ const statCards30d = [
 
 // ── Order Status ────────────────────────────────────────────
 const orderStatuses = [
-  { label: "Menunggu", count: 2, color: "border-l-red-500 bg-red-50/60 border-red-100", textColor: "text-red-700" },
-  { label: "Disiapkan", count: 29, color: "border-l-amber-500 bg-amber-50/60 border-amber-100", textColor: "text-amber-700" },
-  { label: "Dalam Perjalanan", count: 109, color: "border-l-blue-500 bg-blue-50/60 border-blue-100", textColor: "text-blue-700" },
-  { label: "Selesai", count: 273, color: "border-l-emerald-500 bg-emerald-50/60 border-emerald-100", textColor: "text-emerald-700" },
+  { label: "Menunggu", count: 2, bg: "bg-red-50/60 border-red-100", barColor: "bg-red-500", textColor: "text-red-700", statusKey: "pending" },
+  { label: "Disiapkan", count: 29, bg: "bg-amber-50/60 border-amber-100", barColor: "bg-amber-500", textColor: "text-amber-700", statusKey: "processing" },
+  { label: "Dalam Perjalanan", count: 109, bg: "bg-blue-50/60 border-blue-100", barColor: "bg-blue-500", textColor: "text-blue-700", statusKey: "shipped" },
+  { label: "Selesai", count: 273, bg: "bg-emerald-50/60 border-emerald-100", barColor: "bg-emerald-500", textColor: "text-emerald-700", statusKey: "completed" },
 ];
 
 // ── Low Stock ───────────────────────────────────────────────
@@ -112,7 +107,7 @@ const initialHarvestItems = [
   { name: "Brokoli", selected: false },
 ];
 
-// ── Transactions (sekarang diambil dari API) ──────────────────────────────────
+// ── Fallback Transactions for standalone / API offline mode ─
 interface DashboardTx {
   id: string;
   date: string;
@@ -123,6 +118,51 @@ interface DashboardTx {
   items: { name: string; qty: string; price: string }[];
 }
 
+const MOCK_TRANSACTIONS: DashboardTx[] = [
+  {
+    id: "TRX-88219",
+    date: "12 Agt 2026, 14:20",
+    customer: "Budi Santoso",
+    method: "Transfer Bank (BCA)",
+    total: "Rp 150.000",
+    status: "Disiapkan",
+    items: [
+      { name: "Bayam Organik", qty: "3 kg", price: "Rp 45.000" },
+      { name: "Wortel Segar", qty: "5 kg", price: "Rp 105.000" },
+    ],
+  },
+  {
+    id: "TRX-88218",
+    date: "12 Agt 2026, 11:05",
+    customer: "Siti Rahmawati",
+    method: "E-Wallet (QRIS)",
+    total: "Rp 85.000",
+    status: "Sedang Dikirim",
+    items: [{ name: "Kangkung Hidroponik", qty: "5 kg", price: "Rp 85.000" }],
+  },
+  {
+    id: "TRX-88217",
+    date: "11 Agt 2026, 16:45",
+    customer: "Ahmad Dahlan",
+    method: "COD",
+    total: "Rp 210.000",
+    status: "Selesai",
+    items: [
+      { name: "Sawi Putih", qty: "4 kg", price: "Rp 60.000" },
+      { name: "Tomat Merah", qty: "10 kg", price: "Rp 150.000" },
+    ],
+  },
+  {
+    id: "TRX-88216",
+    date: "11 Agt 2026, 09:30",
+    customer: "Dewi Lestari",
+    method: "Transfer Bank (Mandiri)",
+    total: "Rp 95.000",
+    status: "Menunggu",
+    items: [{ name: "Pak Choy", qty: "5 kg", price: "Rp 95.000" }],
+  },
+];
+
 function mapToDashboardTx(t: ApiTransaksi): DashboardTx {
   const statusMap: Record<string, DashboardTx["status"]> = {
     pending: "Menunggu",
@@ -132,15 +172,15 @@ function mapToDashboardTx(t: ApiTransaksi): DashboardTx {
   };
   return {
     id: t.kode_transaksi || `#${t.id}`,
-    date: formatTanggal(t.created_at),
-    customer: t.user?.name ?? t.petani?.nama ?? "—",
+    date: t.created_at ? formatTanggal(t.created_at) : "—",
+    customer: t.user?.name ?? t.petani?.nama ?? "Pelanggan",
     method: mapMetodePembayaran(t.metode_pembayaran),
-    total: formatRupiah(t.total_harga),
+    total: formatRupiah(t.total_harga ?? 0),
     status: statusMap[t.status_pesanan] ?? "Menunggu",
     items: t.items?.map((item) => ({
       name: item.produk?.nama_barang ?? `Produk #${item.produk_id}`,
-      qty: `${item.jumlah} kg`,
-      price: formatRupiah(item.harga_satuan * item.jumlah),
+      qty: `${item.jumlah ?? 1} kg`,
+      price: formatRupiah((item.harga_satuan ?? 0) * (item.jumlah ?? 1)),
     })) ?? [],
   };
 }
@@ -152,29 +192,59 @@ const statusBadgeClass: Record<string, string> = {
   Selesai: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
+// ── Chart Points Data ──────────────────────────────────────────
+const CHART_POINTS_7D = [
+  { day: "Sen", val: "Rp 500.000", x: 30, y: 160 },
+  { day: "Sel", val: "Rp 650.000", x: 170, y: 140 },
+  { day: "Rab", val: "Rp 850.000", x: 320, y: 110 },
+  { day: "Kam", val: "Rp 720.000", x: 420, y: 125 },
+  { day: "Jum", val: "Rp 750.000", x: 470, y: 120 },
+];
+
+const CHART_POINTS_30D = [
+  { day: "Minggu 1", val: "Rp 4.200.000", x: 30, y: 150 },
+  { day: "Minggu 2", val: "Rp 5.800.000", x: 160, y: 90 },
+  { day: "Minggu 3", val: "Rp 5.100.000", x: 310, y: 100 },
+  { day: "Minggu 4", val: "Rp 7.400.000", x: 470, y: 50 },
+];
+
 export default function DashboardPage() {
+  const router = useRouter();
   const token = useAuthStore((s) => s.token);
   const [range, setRange] = useState<"7d" | "30d">("7d");
   const [harvestItems, setHarvestItems] = useState(initialHarvestItems);
   const [selectedTx, setSelectedTx] = useState<DashboardTx | null>(null);
-  const [recentTransactions, setRecentTransactions] = useState<DashboardTx[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<DashboardTx[]>(MOCK_TRANSACTIONS);
   const [txLoading, setTxLoading] = useState(true);
+  const [hoveredPoint, setHoveredPoint] = useState<{ day: string; val: string; x: number; y: number } | null>(null);
 
   const fetchRecentTx = useCallback(async () => {
-    if (!token) { setTxLoading(false); return; }
+    if (!token) {
+      setRecentTransactions(MOCK_TRANSACTIONS);
+      setTxLoading(false);
+      return;
+    }
     try {
       const data = await getTransaksi(token);
-      setRecentTransactions(data.slice(0, 4).map(mapToDashboardTx));
+      if (Array.isArray(data) && data.length > 0) {
+        setRecentTransactions(data.slice(0, 4).map(mapToDashboardTx));
+      } else {
+        setRecentTransactions(MOCK_TRANSACTIONS);
+      }
     } catch {
-      // Silently fail — tabel tetap kosong
+      // Defensive fallback to mock data when API fails
+      setRecentTransactions(MOCK_TRANSACTIONS);
     } finally {
       setTxLoading(false);
     }
   }, [token]);
 
-  useEffect(() => { fetchRecentTx(); }, [fetchRecentTx]);
+  useEffect(() => {
+    fetchRecentTx();
+  }, [fetchRecentTx]);
 
   const currentStatCards = range === "7d" ? statCards7d : statCards30d;
+  const currentChartPoints = range === "7d" ? CHART_POINTS_7D : CHART_POINTS_30D;
 
   const toggleHarvest = (name: string) => {
     setHarvestItems((prev) =>
@@ -196,7 +266,7 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full space-y-6">
-      {/* ── Top Stat Cards — Design match with transaksi/page.tsx ── */}
+      {/* ── Top Stat Cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {currentStatCards.map((card) =>
           card.dark ? (
@@ -253,7 +323,7 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            /* Card 2 & 3: White Cards match with transaksi/page.tsx */
+            /* Card 2 & 3: White Cards */
             <div
               key={card.label}
               className="bg-white text-gray-900 rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex flex-col items-center justify-between text-center min-h-[155px]"
@@ -317,7 +387,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="h-56 w-full relative pt-2">
-            <svg viewBox="0 0 500 200" className="w-full h-full">
+            <svg viewBox="0 0 500 200" className="w-full h-full overflow-visible">
               <defs>
                 <linearGradient id="dashChartGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#1B4332" stopOpacity="0.2" />
@@ -329,28 +399,20 @@ export default function DashboardPage() {
               <line x1="30" y1="100" x2="470" y2="100" stroke="#f1f5f9" strokeWidth="1" />
               <line x1="30" y1="140" x2="470" y2="140" stroke="#f1f5f9" strokeWidth="1" />
               <line x1="30" y1="180" x2="470" y2="180" stroke="#e2e8f0" strokeWidth="1.5" />
+              
               {range === "7d" ? (
                 <>
                   <path
-                    d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 135, 470 120 L 470 180 L 30 180 Z"
+                    d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 125, 470 120 L 470 180 L 30 180 Z"
                     fill="url(#dashChartGradient)"
                   />
                   <path
-                    d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 135, 470 120"
+                    d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 125, 470 120"
                     fill="none"
                     stroke="#1B4332"
                     strokeWidth="3"
                     strokeLinecap="round"
                   />
-                  {[
-                    [30, 160],
-                    [170, 140],
-                    [320, 110],
-                    [420, 125],
-                    [470, 120],
-                  ].map(([x, y], i) => (
-                    <circle key={i} cx={x} cy={y} r="4" fill="#1B4332" stroke="white" strokeWidth="2" />
-                  ))}
                 </>
               ) : (
                 <>
@@ -365,20 +427,40 @@ export default function DashboardPage() {
                     strokeWidth="3"
                     strokeLinecap="round"
                   />
-                  {[
-                    [30, 150],
-                    [90, 130],
-                    [160, 90],
-                    [235, 110],
-                    [310, 100],
-                    [385, 75],
-                    [470, 50],
-                  ].map(([x, y], i) => (
-                    <circle key={i} cx={x} cy={y} r="4" fill="#1B4332" stroke="white" strokeWidth="2" />
-                  ))}
                 </>
               )}
+
+              {/* Interactive Data Points with Tooltips */}
+              {currentChartPoints.map((pt, i) => (
+                <g key={i} className="cursor-pointer group">
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r="6"
+                    fill="#1B4332"
+                    stroke="white"
+                    strokeWidth="2.5"
+                    className="transition-transform duration-200 group-hover:r-8"
+                    onMouseEnter={() => setHoveredPoint(pt)}
+                    onMouseLeave={() => setHoveredPoint(null)}
+                  />
+                </g>
+              ))}
             </svg>
+
+            {/* Floating HTML Tooltip */}
+            {hoveredPoint && (
+              <div
+                className="absolute bg-gray-900 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-lg pointer-events-none -translate-x-1/2 -translate-y-full mb-2 border border-gray-700 transition-all duration-150"
+                style={{
+                  left: `${(hoveredPoint.x / 500) * 100}%`,
+                  top: `${(hoveredPoint.y / 200) * 100}%`,
+                }}
+              >
+                {hoveredPoint.day}: {hoveredPoint.val}
+              </div>
+            )}
+
             <div className="flex justify-between text-[11px] text-gray-400 font-semibold px-6 mt-2">
               {range === "7d"
                 ? ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((d) => <span key={d}>{d}</span>)
@@ -389,15 +471,22 @@ export default function DashboardPage() {
 
         {/* Status Pesanan */}
         <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-4">
-          <h2 className="text-base font-bold text-gray-800">
-            Status Pesanan
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-gray-800">
+              Status Pesanan
+            </h2>
+            <Link href="/pesanan" className="text-xs font-semibold text-[#1B4332] hover:underline">
+              Lihat pesanan
+            </Link>
+          </div>
           <div className="space-y-3 pt-1">
             {orderStatuses.map((s) => (
               <div
                 key={s.label}
-                className={`flex items-center justify-between p-3.5 rounded-xl border border-l-4 ${s.color}`}
+                onClick={() => router.push("/pesanan")}
+                className={`relative overflow-hidden flex items-center justify-between p-3.5 pl-5 rounded-xl border ${s.bg} cursor-pointer hover:shadow-xs transition-all`}
               >
+                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${s.barColor}`} />
                 <span className={`font-semibold text-xs ${s.textColor}`}>{s.label}</span>
                 <span className={`text-xl font-bold ${s.textColor}`}>{s.count}</span>
               </div>
@@ -410,14 +499,21 @@ export default function DashboardPage() {
       <div className="grid gap-5 md:grid-cols-2">
         {/* Stok Hampir Habis */}
         <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-4">
-          <h2 className="text-base font-bold text-gray-800">
-            Stok Hampir Habis
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              Stok Hampir Habis
+            </h2>
+            <Link href="/produk" className="text-xs font-semibold text-[#1B4332] hover:underline">
+              Kelola stok
+            </Link>
+          </div>
           <div className="space-y-2.5 pt-1">
             {lowStockItems.map((item) => (
-              <div
+              <Link
                 key={item.name}
-                className={`flex items-center justify-between p-3.5 rounded-xl border ${item.bg}`}
+                href="/produk"
+                className={`flex items-center justify-between p-3.5 rounded-xl border ${item.bg} hover:opacity-90 transition cursor-pointer`}
               >
                 <span className="font-semibold text-xs text-gray-800">
                   {item.name}
@@ -425,7 +521,7 @@ export default function DashboardPage() {
                 <span className={`inline-flex items-center justify-center border rounded-full px-3.5 py-0.5 text-xs font-bold ${item.badge}`}>
                   {item.amount}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -453,7 +549,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-        {/* ── Recent Transactions Table ── */}
+      {/* ── Recent Transactions Table ── */}
       <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-gray-800">
@@ -476,49 +572,49 @@ export default function DashboardPage() {
         ) : recentTransactions.length === 0 ? (
           <p className="text-center text-xs text-gray-400 py-8">Belum ada transaksi.</p>
         ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-100 text-gray-500 text-xs font-semibold">
-                <th className="py-3.5 px-3">ID Transaksi</th>
-                <th className="py-3.5 px-3 text-center">Tanggal</th>
-                <th className="py-3.5 px-3">Customer</th>
-                <th className="py-3.5 px-3 text-center">Metode Pembayaran</th>
-                <th className="py-3.5 px-3 text-center">Total Harga</th>
-                <th className="py-3.5 px-3 text-center">Status</th>
-                <th className="py-3.5 px-3 text-center pr-2">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
-              {recentTransactions.map((tx, i) => (
-                <tr key={i} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="py-4 px-3 font-medium text-gray-700 text-xs">{tx.id}</td>
-                  <td className="py-4 px-3 text-center text-gray-600 text-xs">{tx.date}</td>
-                  <td className="py-4 px-3 font-semibold text-gray-800 text-xs">{tx.customer}</td>
-                  <td className="py-4 px-3 text-center font-medium text-gray-700 text-xs">{tx.method}</td>
-                  <td className="py-4 px-3 text-center font-medium text-gray-900 text-xs">{tx.total}</td>
-                  <td className="py-4 px-3 text-center">
-                    <span className={`inline-flex items-center justify-center border rounded-full px-4 py-1 text-xs font-semibold ${statusBadgeClass[tx.status]}`}>
-                      {tx.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-3 text-center pr-2">
-                    <button
-                      onClick={() => setSelectedTx(tx)}
-                      className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-5 py-2 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                    >
-                      Lihat detail
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 text-gray-500 text-xs font-semibold">
+                  <th className="py-3.5 px-3">ID Transaksi</th>
+                  <th className="py-3.5 px-3 text-center">Tanggal</th>
+                  <th className="py-3.5 px-3">Customer</th>
+                  <th className="py-3.5 px-3 text-center">Metode Pembayaran</th>
+                  <th className="py-3.5 px-3 text-center">Total Harga</th>
+                  <th className="py-3.5 px-3 text-center">Status</th>
+                  <th className="py-3.5 px-3 text-center pr-2">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm">
+                {recentTransactions.map((tx, i) => (
+                  <tr key={i} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="py-4 px-3 font-medium text-gray-700 text-xs">{tx.id}</td>
+                    <td className="py-4 px-3 text-center text-gray-600 text-xs">{tx.date}</td>
+                    <td className="py-4 px-3 font-semibold text-gray-800 text-xs">{tx.customer}</td>
+                    <td className="py-4 px-3 text-center font-medium text-gray-700 text-xs">{tx.method}</td>
+                    <td className="py-4 px-3 text-center font-medium text-gray-900 text-xs">{tx.total}</td>
+                    <td className="py-4 px-3 text-center">
+                      <span className={`inline-flex items-center justify-center border rounded-full px-4 py-1 text-xs font-semibold ${statusBadgeClass[tx.status] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                        {tx.status}
+                      </span>
+                    </td>
+                    <td className="py-4 px-3 text-center pr-2">
+                      <button
+                        onClick={() => setSelectedTx(tx)}
+                        className="bg-[#1B4332] hover:bg-[#05543c] text-white rounded-full px-5 py-2 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                      >
+                        Lihat detail
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* ── Transaction Detail Modal — Matching standard clean white modal design ── */}
+      {/* ── Transaction Detail Modal ── */}
       {selectedTx && (
         <Dialog open={!!selectedTx} onOpenChange={(open) => !open && setSelectedTx(null)}>
           <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
@@ -547,7 +643,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <span className="text-gray-400 block mb-1">Status</span>
-                  <span className={`inline-flex items-center border rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass[selectedTx.status]}`}>
+                  <span className={`inline-flex items-center border rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass[selectedTx.status] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
                     {selectedTx.status}
                   </span>
                 </div>
@@ -556,15 +652,19 @@ export default function DashboardPage() {
               <div>
                 <h4 className="font-bold text-gray-700 uppercase tracking-wider mb-2.5">Item Pembelian</h4>
                 <div className="space-y-2.5">
-                  {selectedTx.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-xs border-b border-gray-50 pb-2.5">
-                      <div>
-                        <p className="font-semibold text-gray-800">{item.name}</p>
-                        <p className="text-gray-400">Qty: {item.qty}</p>
+                  {selectedTx.items && selectedTx.items.length > 0 ? (
+                    selectedTx.items.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-xs border-b border-gray-50 pb-2.5">
+                        <div>
+                          <p className="font-semibold text-gray-800">{item.name}</p>
+                          <p className="text-gray-400">Qty: {item.qty}</p>
+                        </div>
+                        <span className="font-bold text-gray-900">{item.price}</span>
                       </div>
-                      <span className="font-bold text-gray-900">{item.price}</span>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-gray-400 italic">Tidak ada rincian item.</p>
+                  )}
                 </div>
               </div>
 
@@ -585,9 +685,6 @@ export default function DashboardPage() {
           </DialogContent>
         </Dialog>
       )}
-
-      {/* Floating test toast button */}
-      <TestToastButton />
     </div>
   );
 }

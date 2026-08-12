@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Search, Send, MessageSquare, Check, CheckCheck, User, Sparkles } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Search, Send, MessageSquare, Check, CheckCheck, Sparkles, ArrowLeft, X } from "lucide-react";
 
 interface Message {
   id: string;
@@ -141,12 +141,23 @@ export default function ChatPage() {
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterUnread, setFilterUnread] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const selectedContact = contacts.find((c) => c.id === selectedContactId);
 
+  // Auto-scroll to bottom of messages stream
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [selectedContactId, selectedContact?.messages.length]);
+
   // Filter contacts based on search and unread filter
   const filteredContacts = contacts.filter((contact) => {
-    const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch =
+      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contact.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesUnread = !filterUnread || contact.unreadCount > 0;
     return matchesSearch && matchesUnread;
@@ -155,18 +166,24 @@ export default function ChatPage() {
   const handleSelectContact = (id: string) => {
     setSelectedContactId(id);
     // Mark as read when selected
-    setContacts(prev => prev.map(c => c.id === id ? { ...c, unreadCount: 0 } : c));
+    setContacts((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
+    );
   };
 
-  const handleSendMessage = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!messageText.trim() || !selectedContactId) return;
+  const dispatchSendMessage = (text: string) => {
+    if (!text.trim() || !selectedContactId) return;
+
+    const currentTime = new Date().toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
     const newMessage: Message = {
       id: `m-new-${Date.now()}`,
       sender: "admin",
-      text: messageText,
-      time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+      text: text.trim(),
+      time: currentTime,
       status: "read",
     };
 
@@ -175,7 +192,7 @@ export default function ChatPage() {
         if (c.id === selectedContactId) {
           return {
             ...c,
-            lastMessage: messageText,
+            lastMessage: text.trim(),
             time: "Baru saja",
             messages: [...c.messages, newMessage],
           };
@@ -185,37 +202,53 @@ export default function ChatPage() {
     );
 
     setMessageText("");
+
+    // Simulated Auto-Reply from Customer (~1.5s delay)
+    const targetId = selectedContactId;
+    setTimeout(() => {
+      setContacts((prev) =>
+        prev.map((c) => {
+          if (c.id === targetId) {
+            const autoReplyText = "Baik, terima kasih respon cepatnya Kak! 👍";
+            const replyMsg: Message = {
+              id: `m-reply-${Date.now()}`,
+              sender: "customer",
+              text: autoReplyText,
+              time: new Date().toLocaleTimeString("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            };
+            return {
+              ...c,
+              lastMessage: autoReplyText,
+              time: "Baru saja",
+              messages: [...c.messages, replyMsg],
+            };
+          }
+          return c;
+        })
+      );
+    }, 1500);
+  };
+
+  const handleSendMessage = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    dispatchSendMessage(messageText);
   };
 
   const handleQuickReply = (text: string) => {
-    if (!selectedContactId) return;
-    const newMessage: Message = {
-      id: `m-new-${Date.now()}`,
-      sender: "admin",
-      text: text,
-      time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
-      status: "read",
-    };
-
-    setContacts((prev) =>
-      prev.map((c) => {
-        if (c.id === selectedContactId) {
-          return {
-            ...c,
-            lastMessage: text,
-            time: "Baru saja",
-            messages: [...c.messages, newMessage],
-          };
-        }
-        return c;
-      })
-    );
+    dispatchSendMessage(text);
   };
 
   return (
     <div className="w-full h-[calc(100vh-160px)] min-h-[500px] grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* ── Left Sidebar: Chat Contacts List ─────────────────────── */}
-      <div className="bg-white rounded-2xl p-4 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex flex-col h-full space-y-4">
+      <div
+        className={`bg-white rounded-2xl p-4 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex-col h-full space-y-4 ${
+          selectedContactId ? "hidden lg:flex" : "flex"
+        }`}
+      >
         {/* Search Input */}
         <div className="relative">
           <input
@@ -225,7 +258,18 @@ export default function ChatPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-[#f3f4f6] text-sm text-gray-800 placeholder:text-gray-400 rounded-full pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-[#1B4332]/20 transition"
           />
-          <Search className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+              aria-label="Bersihkan pencarian"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          ) : (
+            <Search className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          )}
         </div>
 
         {/* Filter Selection Tabs */}
@@ -263,65 +307,85 @@ export default function ChatPage() {
               <p className="text-xs font-semibold">Tidak ada percakapan</p>
             </div>
           ) : (
-            filteredContacts.map((contact) => (
-              <button
-                key={contact.id}
-                onClick={() => handleSelectContact(contact.id)}
-                className={`w-full flex items-center gap-3.5 p-3 transition-all cursor-pointer text-left ${
-                  selectedContactId === contact.id
-                    ? "bg-[#eefcf4] border-l-4 border-[#1B4332] rounded-r-xl rounded-l-none shadow-2xs"
-                    : "hover:bg-gray-50 rounded-xl border-l-4 border-transparent"
-                }`}
-              >
-                {/* Avatar */}
-                <div className="relative shrink-0">
-                  <div className="w-11 h-11 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-bold overflow-hidden">
-                    {contact.name.charAt(0)}
-                  </div>
-                  {contact.status === "Online" && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
+            filteredContacts.map((contact) => {
+              const isSelected = selectedContactId === contact.id;
+              return (
+                <button
+                  key={contact.id}
+                  onClick={() => handleSelectContact(contact.id)}
+                  className={`w-full relative overflow-hidden flex items-center gap-3.5 p-3 transition-all cursor-pointer text-left rounded-xl ${
+                    isSelected ? "bg-[#eefcf4] shadow-2xs" : "hover:bg-gray-50"
+                  }`}
+                >
+                  {/* Straight Indicator Bar (No rounded corners on border stroke) */}
+                  {isSelected && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#1B4332]" />
                   )}
-                </div>
 
-                {/* Meta details */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-gray-800 truncate">
-                      {contact.name}
-                    </h3>
-                    <span className="text-[10px] text-gray-400 font-semibold shrink-0">
-                      {contact.time}
-                    </span>
+                  {/* Avatar */}
+                  <div className="relative shrink-0 pl-1">
+                    <div className="w-11 h-11 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-bold overflow-hidden">
+                      {contact.name.charAt(0)}
+                    </div>
+                    {contact.status === "Online" && (
+                      <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
+                    )}
                   </div>
-                  <p className={`text-xs truncate mt-1 ${
-                    contact.unreadCount > 0 ? "font-bold text-gray-900" : "text-gray-500"
-                  }`}>
-                    {contact.lastMessage}
-                  </p>
-                </div>
 
-                {/* Unread count badge */}
-                {contact.unreadCount > 0 && (
-                  <span className="w-5 h-5 rounded-full bg-[#1B4332] text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">
-                    {contact.unreadCount}
-                  </span>
-                )}
-              </button>
-            ))
+                  {/* Meta details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-gray-800 truncate">
+                        {contact.name}
+                      </h3>
+                      <span className="text-[10px] text-gray-400 font-semibold shrink-0">
+                        {contact.time}
+                      </span>
+                    </div>
+                    <p
+                      className={`text-xs truncate mt-1 ${
+                        contact.unreadCount > 0
+                          ? "font-bold text-gray-900"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {contact.lastMessage}
+                    </p>
+                  </div>
+
+                  {/* Unread count badge */}
+                  {contact.unreadCount > 0 && (
+                    <span className="w-5 h-5 rounded-full bg-[#1B4332] text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">
+                      {contact.unreadCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })
           )}
         </div>
       </div>
 
       {/* ── Right Content Area: Active Chat Conversation ────────── */}
-      <div className="bg-white rounded-2xl p-4 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 lg:col-span-2 flex flex-col h-full overflow-hidden relative">
-        
+      <div
+        className={`bg-white rounded-2xl p-4 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 lg:col-span-2 flex-col h-full overflow-hidden relative ${
+          selectedContactId ? "flex" : "hidden lg:flex"
+        }`}
+      >
         {/* Subtle Decorative Arc Overlay */}
         <div className="absolute -top-16 -right-16 w-60 h-60 pointer-events-none opacity-20 overflow-hidden">
           <svg className="w-full h-full" viewBox="0 0 240 240" fill="none">
             <circle cx="240" cy="0" r="200" fill="url(#chatArc)" opacity="0.4" />
             <circle cx="240" cy="0" r="130" fill="url(#chatArc)" opacity="0.6" />
             <defs>
-              <linearGradient id="chatArc" x1="240" y1="0" x2="0" y2="240" gradientUnits="userSpaceOnUse">
+              <linearGradient
+                id="chatArc"
+                x1="240"
+                y1="0"
+                x2="0"
+                y2="240"
+                gradientUnits="userSpaceOnUse"
+              >
                 <stop offset="0%" stopColor="#52b788" />
                 <stop offset="100%" stopColor="#1B4332" stopOpacity="0" />
               </linearGradient>
@@ -332,21 +396,37 @@ export default function ChatPage() {
         {selectedContact ? (
           <>
             {/* Header info */}
-            <div className="border-b border-gray-100 pb-3 flex items-center gap-3 relative z-10">
-              <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-bold">
-                {selectedContact.name.charAt(0)}
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-gray-800">
-                  {selectedContact.name}
-                </h2>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    selectedContact.status === "Online" ? "bg-emerald-500" : "bg-gray-400"
-                  }`} />
-                  <span className="text-[10px] text-gray-400 font-semibold">
-                    {selectedContact.status}
-                  </span>
+            <div className="border-b border-gray-100 pb-3 flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-3">
+                {/* Mobile Back Button */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedContactId(null)}
+                  className="lg:hidden p-1.5 -ml-1 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+                  aria-label="Kembali ke Kontak"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+
+                <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-bold shrink-0">
+                  {selectedContact.name.charAt(0)}
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-gray-800">
+                    {selectedContact.name}
+                  </h2>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        selectedContact.status === "Online"
+                          ? "bg-emerald-500"
+                          : "bg-gray-400"
+                      }`}
+                    />
+                    <span className="text-[10px] text-gray-400 font-semibold">
+                      {selectedContact.status}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -383,6 +463,7 @@ export default function ChatPage() {
                   </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Quick Replies templates */}
@@ -432,7 +513,7 @@ export default function ChatPage() {
                 Kotak Pesan Pembeli
               </h2>
               <p className="text-xs text-gray-400 leading-relaxed font-semibold">
-                Kelola seluruh percakapan dan pertanyaan dari pembeli
+                Pilih salah satu percakapan di sebelah kiri untuk melihat dan membalas pesan.
               </p>
             </div>
           </div>

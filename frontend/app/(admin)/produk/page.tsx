@@ -17,6 +17,9 @@ import {
   Upload,
   Image as ImageIcon,
   Check,
+  Edit2,
+  Save,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -167,12 +170,20 @@ export default function ProdukPage() {
   // View mode: "table" | "add" | "edit"
   const [viewMode, setViewMode] = useState<"table" | "add" | "edit">("table");
 
-  // Modals
+  // Modals matching Figma popups
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [selectedDetailProduct, setSelectedDetailProduct] = useState<Product | null>(null);
+  
+  const [showInitialAddConfirmModal, setShowInitialAddConfirmModal] = useState(false);
+  const [showAddConfirmModal, setShowAddConfirmModal] = useState(false);
+  const [confirmEditInitialProduct, setConfirmEditInitialProduct] = useState<Product | null>(null);
+  const [showEditSubmitConfirmModal, setShowEditSubmitConfirmModal] = useState(false);
+  const [deletingProductStep1, setDeletingProductStep1] = useState<Product | null>(null);
+  const [deletingProductStep2, setDeletingProductStep2] = useState<Product | null>(null);
+  const [deleteInputName, setDeleteInputName] = useState("");
 
   // Form & Defensive States
+  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
@@ -382,6 +393,12 @@ export default function ProdukPage() {
       return;
     }
 
+    // Trigger Image 2 confirmation dialog
+    setShowAddConfirmModal(true);
+  };
+
+  const executeAddProduct = async () => {
+    setShowAddConfirmModal(false);
     setIsSubmitting(true);
 
     const numericStock = parseFloat(formData.stock) || 0;
@@ -482,6 +499,12 @@ export default function ProdukPage() {
       return;
     }
 
+    // Trigger Image 5 confirmation dialog
+    setShowEditSubmitConfirmModal(true);
+  };
+
+  const executeEditProduct = async () => {
+    setShowEditSubmitConfirmModal(false);
     setIsSubmitting(true);
 
     const numericStock = parseFloat(formData.stock) || 0;
@@ -542,11 +565,8 @@ export default function ProdukPage() {
     resetForm();
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!deletingProduct) return;
-    const toDelete = deletingProduct;
+  const executeDeleteProduct = async (toDelete: Product) => {
     setProducts((prev) => prev.filter((p) => p.id !== toDelete.id));
-    setDeletingProduct(null);
 
     if (token && user?.role === "petani") {
       try {
@@ -1243,14 +1263,25 @@ export default function ProdukPage() {
               placeholder="Cari produk..."
               className="w-full bg-[#f3f4f6] text-sm text-gray-800 placeholder:text-gray-400 rounded-full pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-[#1B4332]/20 transition"
             />
-            <Search className="w-4 h-4 text-gray-700 absolute right-3.5 top-1/2 -translate-y-1/2" />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCurrentPage(1);
+                }}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+                aria-label="Bersihkan pencarian"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            ) : (
+              <Search className="w-4 h-4 text-gray-700 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            )}
           </div>
 
           <button
-            onClick={() => {
-              resetForm();
-              setViewMode("add");
-            }}
+            onClick={() => setShowInitialAddConfirmModal(true)}
             className="w-full sm:w-auto bg-[#1B4332] hover:bg-[#05543c] text-white text-xs font-semibold rounded-full px-5 py-2.5 transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -1277,13 +1308,20 @@ export default function ProdukPage() {
                   <tr key={item.id} className="hover:bg-gray-50/50 transition">
                     <td className="py-4 pl-2">
                       <div className="flex items-center gap-3">
-                        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100 border border-gray-100">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                          {!failedImages[item.id] ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              onError={() =>
+                                setFailedImages((prev) => ({ ...prev, [item.id]: true }))
+                              }
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Sprout className="w-5 h-5 text-[#1B4332]" />
+                          )}
                         </div>
                         <span className="font-medium text-gray-800 text-sm">{item.name}</span>
                       </div>
@@ -1325,13 +1363,13 @@ export default function ProdukPage() {
                     <td className="py-4 text-right pr-4">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => openEditModal(item)}
+                          onClick={() => setConfirmEditInitialProduct(item)}
                           className="bg-[#5ec250] hover:bg-[#4cb03f] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => setDeletingProduct(item)}
+                          onClick={() => setDeletingProductStep1(item)}
                           className="bg-[#e60000] hover:bg-[#cc0000] text-white rounded-full px-4 py-1.5 text-xs font-semibold transition cursor-pointer shadow-2xs"
                         >
                           Hapus
@@ -1577,39 +1615,208 @@ export default function ProdukPage() {
         </Dialog>
       )}
 
-      {/* ── Dialog Hapus Produk ── */}
-      {deletingProduct && (
-        <Dialog open={!!deletingProduct} onOpenChange={(open) => !open && setDeletingProduct(null)}>
-          <DialogContent className="sm:max-w-xs bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center">
-            <div className="w-14 h-14 rounded-full bg-red-100/80 border border-red-300 text-red-600 flex items-center justify-center mx-auto mb-3">
-              <Trash2 className="w-7 h-7" />
-            </div>
+      {/* ── 0. Modal Confirmation: Tambah Produk Baru? Initial ── */}
+      <Dialog open={showInitialAddConfirmModal} onOpenChange={setShowInitialAddConfirmModal}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-center flex flex-col items-center">
+          <div className="w-16 h-16 bg-[#d5ebe1] rounded-full flex items-center justify-center border-[1.5px] border-[#1B4332] mb-3">
+            <Plus className="w-7 h-7 text-[#014c32]" />
+          </div>
+          <DialogTitle className="text-lg font-bold text-gray-900 mb-1">Tambah Produk Baru?</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 mb-4 font-medium leading-relaxed max-w-[340px]">
+            Pilih <span className="font-bold text-gray-700">Tambah</span> untuk membuat produk baru yang akan ditampilkan
+          </DialogDescription>
+          
+          <div className="flex w-full gap-3">
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => setShowInitialAddConfirmModal(false)}
+              className="flex-1 rounded-xl h-11 bg-[#e2e2e2] border-transparent hover:bg-[#d1d1d1] text-gray-500 font-bold text-sm cursor-pointer"
+            >
+              Batal
+            </Button>
+            <Button 
+              type="button"
+              onClick={() => {
+                setShowInitialAddConfirmModal(false);
+                resetForm();
+                setViewMode("add");
+              }}
+              className="flex-1 rounded-xl h-11 bg-[#014c32] hover:bg-[#023c28] text-white font-bold text-sm cursor-pointer"
+            >
+              Tambah
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-            <DialogTitle className="text-base font-bold text-gray-900 text-center">
-              Hapus Produk?
-            </DialogTitle>
-            <p className="text-xs text-gray-500 text-center mt-1 leading-relaxed">
-              Apakah Anda yakin ingin menghapus <span className="font-bold text-gray-800">{deletingProduct.name}</span> dari daftar produk?
-            </p>
+      {/* ── 1. Modal Confirmation: Simpan Produk Baru? (Image 2) ── */}
+      <Dialog open={showAddConfirmModal} onOpenChange={setShowAddConfirmModal}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-center flex flex-col items-center">
+          <div className="w-16 h-16 bg-[#d5ebe1] rounded-full flex items-center justify-center border-[1.5px] border-[#1B4332] mb-3">
+            <Save className="w-7 h-7 text-[#014c32]" />
+          </div>
+          <DialogTitle className="text-lg font-bold text-gray-900 mb-1">Simpan Produk Baru?</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 mb-4 font-medium leading-relaxed max-w-[340px]">
+            Pilih <span className="font-bold text-gray-700">Simpan</span> untuk menyimpan data produk
+          </DialogDescription>
+          
+          <div className="flex w-full gap-3">
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => setShowAddConfirmModal(false)}
+              className="flex-1 rounded-xl h-11 bg-[#e2e2e2] border-transparent hover:bg-[#d1d1d1] text-gray-500 font-bold text-sm cursor-pointer"
+            >
+              Batal
+            </Button>
+            <Button 
+              type="button"
+              onClick={executeAddProduct}
+              className="flex-1 rounded-xl h-11 bg-[#014c32] hover:bg-[#023c28] text-white font-bold text-sm cursor-pointer"
+            >
+              Simpan
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-            <div className="flex items-center gap-3 pt-5">
-              <Button
-                variant="secondary"
-                onClick={() => setDeletingProduct(null)}
-                className="flex-1 h-10 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-xs rounded-xl cursor-pointer"
-              >
-                Batal
-              </Button>
-              <Button
-                onClick={handleDeleteConfirm}
-                className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-xl shadow-xs cursor-pointer"
-              >
-                Hapus
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* ── 2. Modal Confirmation: Edit Produk? (Image 3) ── */}
+      <Dialog open={!!confirmEditInitialProduct} onOpenChange={(open) => !open && setConfirmEditInitialProduct(null)}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-center flex flex-col items-center">
+          <div className="w-16 h-16 bg-[#d5ebe1] rounded-full flex items-center justify-center border-[1.5px] border-[#1B4332] mb-3">
+            <Edit2 className="w-7 h-7 text-[#014c32]" />
+          </div>
+          <DialogTitle className="text-lg font-bold text-gray-900 mb-1">Edit Produk?</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 mb-4 font-medium leading-relaxed max-w-[340px]">
+            Pilih <span className="font-bold text-gray-700">Edit</span> untuk mengubah informasi produk ini
+          </DialogDescription>
+          
+          <div className="flex w-full gap-3">
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => setConfirmEditInitialProduct(null)}
+              className="flex-1 rounded-xl h-11 bg-[#e2e2e2] border-transparent hover:bg-[#d1d1d1] text-gray-500 font-bold text-sm cursor-pointer"
+            >
+              Batal
+            </Button>
+            <Button 
+              type="button"
+              onClick={() => {
+                const p = confirmEditInitialProduct;
+                setConfirmEditInitialProduct(null);
+                if (p) openEditModal(p);
+              }}
+              className="flex-1 rounded-xl h-11 bg-[#014c32] hover:bg-[#023c28] text-white font-bold text-sm cursor-pointer"
+            >
+              Edit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 3. Modal Confirmation: Simpan Perubahan? (Image 5) ── */}
+      <Dialog open={showEditSubmitConfirmModal} onOpenChange={setShowEditSubmitConfirmModal}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-center flex flex-col items-center">
+          <div className="w-16 h-16 bg-[#d5ebe1] rounded-full flex items-center justify-center border-[1.5px] border-[#1B4332] mb-3">
+            <Edit2 className="w-7 h-7 text-[#014c32]" />
+          </div>
+          <DialogTitle className="text-lg font-bold text-gray-900 mb-1">Simpan Perubahan?</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 mb-4 font-medium leading-relaxed max-w-[340px]">
+            Pilih <span className="font-bold text-gray-700">Simpan</span> untuk menyimpan informasi perubahan produk
+          </DialogDescription>
+          
+          <div className="flex w-full gap-3">
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => setShowEditSubmitConfirmModal(false)}
+              className="flex-1 rounded-xl h-11 bg-[#e2e2e2] border-transparent hover:bg-[#d1d1d1] text-gray-500 font-bold text-sm cursor-pointer"
+            >
+              Batal
+            </Button>
+            <Button 
+              type="button"
+              onClick={executeEditProduct}
+              className="flex-1 rounded-xl h-11 bg-[#014c32] hover:bg-[#023c28] text-white font-bold text-sm cursor-pointer"
+            >
+              Simpan
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 4. Modal Confirmation: Hapus Produk? Step 1 (Image 4) ── */}
+      <Dialog open={!!deletingProductStep1} onOpenChange={(open) => !open && setDeletingProductStep1(null)}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-center flex flex-col items-center">
+          <div className="w-16 h-16 bg-[#fdd8d8] rounded-full flex items-center justify-center border-[1.5px] border-red-500 mb-3">
+            <Trash2 className="w-7 h-7 text-red-500" />
+          </div>
+          <DialogTitle className="text-lg font-bold text-gray-900 mb-1">Hapus Produk?</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 mb-4 font-medium leading-relaxed max-w-[340px]">
+            Tindakan ini akan menghapus data secara permanen dari sistem
+          </DialogDescription>
+          
+          <div className="flex w-full gap-3">
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => setDeletingProductStep1(null)}
+              className="flex-1 rounded-xl h-11 bg-[#e2e2e2] border-transparent hover:bg-[#d1d1d1] text-gray-500 font-bold text-sm cursor-pointer"
+            >
+              Batal
+            </Button>
+            <Button 
+              type="button"
+              onClick={() => {
+                const p = deletingProductStep1;
+                setDeletingProductStep1(null);
+                if (p) {
+                  setDeletingProductStep2(p);
+                  setDeleteInputName("");
+                }
+              }}
+              className="flex-1 rounded-xl h-11 bg-[#f00000] hover:bg-[#d00000] text-white font-bold text-sm cursor-pointer"
+            >
+              Hapus
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 5. Modal Confirmation: Hapus Produk Step 2 Retype (Image 1) ── */}
+      <Dialog open={!!deletingProductStep2} onOpenChange={(open) => !open && setDeletingProductStep2(null)}>
+        <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+            <DialogTitle className="text-base font-bold text-gray-900">Hapus Produk</DialogTitle>
+          </div>
+          
+          <p className="text-xs font-medium text-gray-600 mb-3">
+            Tulis ulang nama produk <span className="font-bold text-gray-900">&ldquo;{deletingProductStep2?.name}&rdquo;</span>, untuk hapus produk
+          </p>
+
+          <Input 
+            value={deleteInputName}
+            onChange={(e) => setDeleteInputName(e.target.value)}
+            placeholder="Masukkan nama produk"
+            className="h-11 rounded-xl bg-[#f9fafb] border-gray-200 text-xs font-medium focus:ring-2 focus:ring-red-500/20 mb-6"
+          />
+
+          <Button 
+            disabled={deleteInputName.trim() !== deletingProductStep2?.name}
+            onClick={() => {
+              if (!deletingProductStep2) return;
+              const p = deletingProductStep2;
+              setDeletingProductStep2(null);
+              executeDeleteProduct(p);
+            }}
+            className="w-full h-11 bg-[#f00000] hover:bg-[#d00000] disabled:opacity-40 text-white font-bold text-sm rounded-xl cursor-pointer"
+          >
+            Hapus
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Modal Detail Produk ── */}
       {selectedDetailProduct && (

@@ -12,6 +12,8 @@ import {
   MapPin,
   XCircle,
   Package,
+  Trash2,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -59,24 +61,6 @@ function isWithinDays(dateStr: string, days: number): boolean {
   if (!parsed) return true;
   const diffMs = REFERENCE_TODAY.getTime() - parsed.getTime();
   return diffMs >= 0 && diffMs <= days * 24 * 60 * 60 * 1000;
-}
-
-// Status transition logic — forward only, branching by delivery method
-function getNextStatuses(current: OrderStatus, deliveryMethod: DeliveryMethod): OrderStatus[] {
-  switch (current) {
-    case "Menunggu":
-      return ["Disiapkan"];
-    case "Disiapkan":
-      return deliveryMethod === "Pickup" ? ["Siap Diambil"] : ["Sedang Dikirim"];
-    case "Siap Diambil":
-      return ["Selesai"];
-    case "Sedang Dikirim":
-      return ["Selesai"];
-    case "Selesai":
-      return [];
-    default:
-      return [];
-  }
 }
 
 // Status badge color map
@@ -169,17 +153,18 @@ export default function PesananPage() {
   const [orders, setOrders] = useState<OrderItem[]>(initialOrders);
   const [searchQuery, setSearchQuery] = useState("");
   const [timeFilter, setTimeFilter] = useState<"Semua" | "7 hari" | "30 hari">("Semua");
+  const [statusFilter, setStatusFilter] = useState<"Semua Status" | "Menunggu" | "Disiapkan" | "Dalam Perjalanan" | "Selesai">("Semua Status");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Confirmation Modals State (matching dialog menu ... .png)
+  // Confirmation Modals State
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [confirmTerimaOrder, setConfirmTerimaOrder] = useState<OrderItem | null>(null);
   const [confirmTolakOrder, setConfirmTolakOrder] = useState<OrderItem | null>(null);
   const [confirmKirimOrder, setConfirmKirimOrder] = useState<OrderItem | null>(null);
   const [confirmSelesaiOrder, setConfirmSelesaiOrder] = useState<OrderItem | null>(null);
-  const [confirmBatalOrder, setConfirmBatalOrder] = useState<OrderItem | null>(null);
   const [alasanTolak, setAlasanTolak] = useState("Stok Habis");
-  const [alasanBatal, setAlasanBatal] = useState("Permintaan Pembeli");
+
+  // Form State Catat Pesanan
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newOrderCustomer, setNewOrderCustomer] = useState("");
   const [newOrderDeliveryMethod, setNewOrderDeliveryMethod] = useState<DeliveryMethod>("Pickup");
@@ -199,11 +184,21 @@ export default function PesananPage() {
         ord.customer.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchSearch) return false;
 
+      // Status filter
+      if (statusFilter !== "Semua Status") {
+        if (statusFilter === "Dalam Perjalanan") {
+          if (ord.status !== "Sedang Dikirim" && ord.status !== "Siap Diambil") return false;
+        } else if (ord.status !== statusFilter) {
+          return false;
+        }
+      }
+
+      // Time filter
       if (timeFilter === "7 hari") return isWithinDays(ord.date, 7);
       if (timeFilter === "30 hari") return isWithinDays(ord.date, 30);
       return true;
     });
-  }, [orders, searchQuery, timeFilter]);
+  }, [orders, searchQuery, statusFilter, timeFilter]);
 
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage) || 1;
 
@@ -252,6 +247,11 @@ export default function PesananPage() {
     showToast(`Item "${selectedCatalogItem}" ditambahkan ke rincian pesanan`, "success");
   };
 
+  const handleRemoveDraftItem = (index: number) => {
+    setAddedItems((prev) => prev.filter((_, i) => i !== index));
+    showToast("Item dihapus dari rincian pesanan", "info");
+  };
+
   const handleAddOrderSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (addedItems.length === 0) {
@@ -284,14 +284,23 @@ export default function PesananPage() {
     setNewOrderCustomer("");
     setNewOrderAlamat("");
     setAddedItems([{ name: "Bayam Organik Asal Jember", qty: "2 kg", price: "Rp 25.000" }]);
+    showToast(`Pesanan ${order.id} berhasil dicatat!`, "success");
   };
 
   return (
     <div className="w-full space-y-6">
-      {/* ── Stat Cards ── */}
+      {/* ── Stat Cards (Clickable Filter) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Menunggu */}
-        <div className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-3">
+        <div
+          onClick={() => {
+            setStatusFilter((prev) => (prev === "Menunggu" ? "Semua Status" : "Menunggu"));
+            setCurrentPage(1);
+          }}
+          className={`bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border ring-1 ring-black/5 space-y-3 cursor-pointer transition-all hover:scale-[1.01] ${
+            statusFilter === "Menunggu" ? "border-red-500 ring-2 ring-red-200" : "border-emerald-300"
+          }`}
+        >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 text-red-500 flex items-center justify-center shrink-0">
               <Hourglass className="w-6 h-6" />
@@ -318,7 +327,15 @@ export default function PesananPage() {
         </div>
 
         {/* Card 2: Disiapkan */}
-        <div className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-3">
+        <div
+          onClick={() => {
+            setStatusFilter((prev) => (prev === "Disiapkan" ? "Semua Status" : "Disiapkan"));
+            setCurrentPage(1);
+          }}
+          className={`bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border ring-1 ring-black/5 space-y-3 cursor-pointer transition-all hover:scale-[1.01] ${
+            statusFilter === "Disiapkan" ? "border-amber-500 ring-2 ring-amber-200" : "border-emerald-300"
+          }`}
+        >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0">
               <PackageCheck className="w-6 h-6" />
@@ -337,8 +354,16 @@ export default function PesananPage() {
           </div>
         </div>
 
-        {/* Card 3: Siap Diambil / Sedang Dikirim */}
-        <div className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-3">
+        {/* Card 3: Dalam Perjalanan */}
+        <div
+          onClick={() => {
+            setStatusFilter((prev) => (prev === "Dalam Perjalanan" ? "Semua Status" : "Dalam Perjalanan"));
+            setCurrentPage(1);
+          }}
+          className={`bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border ring-1 ring-black/5 space-y-3 cursor-pointer transition-all hover:scale-[1.01] ${
+            statusFilter === "Dalam Perjalanan" ? "border-blue-500 ring-2 ring-blue-200" : "border-emerald-300"
+          }`}
+        >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0">
               <Truck className="w-6 h-6" />
@@ -358,7 +383,15 @@ export default function PesananPage() {
         </div>
 
         {/* Card 4: Selesai */}
-        <div className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-3">
+        <div
+          onClick={() => {
+            setStatusFilter((prev) => (prev === "Selesai" ? "Semua Status" : "Selesai"));
+            setCurrentPage(1);
+          }}
+          className={`bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border ring-1 ring-black/5 space-y-3 cursor-pointer transition-all hover:scale-[1.01] ${
+            statusFilter === "Selesai" ? "border-teal-500 ring-2 ring-teal-200" : "border-emerald-300"
+          }`}
+        >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-6 h-6" />
@@ -381,23 +414,63 @@ export default function PesananPage() {
       {/* ── Main Order Table Card ── */}
       <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-5">
         {/* Table Controls */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-          <div className="relative w-full lg:w-80">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Cari pesanan..."
-              className="w-full bg-[#f3f4f6] text-sm text-gray-800 placeholder:text-gray-400 rounded-full pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-[#1B4332]/20 transition"
-            />
-            <Search className="w-4 h-4 text-gray-700 absolute right-3.5 top-1/2 -translate-y-1/2" />
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
+          {/* Left Controls: Search Input + Status Filter Pills */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64 xl:w-72">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Cari pesanan (ID / Nama)..."
+                className="w-full bg-[#f3f4f6] text-sm text-gray-800 placeholder:text-gray-400 rounded-full pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-[#1B4332]/20 transition"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+                  aria-label="Bersihkan pencarian"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : (
+                <Search className="w-4 h-4 text-gray-700 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              )}
+            </div>
+
+            {/* Status Filter Pills (Di sebelah kanan Search) */}
+            <div className="bg-gray-100 p-1 rounded-full border border-gray-200 flex items-center gap-1 overflow-x-auto max-w-full w-full sm:w-auto">
+              {(["Semua Status", "Menunggu", "Disiapkan", "Dalam Perjalanan", "Selesai"] as const).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => {
+                    setStatusFilter(st);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1 text-[11px] rounded-full transition whitespace-nowrap cursor-pointer ${
+                    statusFilter === st
+                      ? "font-bold bg-[#1B4332] text-white shadow-2xs"
+                      : "font-medium text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between sm:justify-end w-full lg:w-auto gap-4">
-            <div className="bg-[#eefcf4] p-1.5 rounded-full border border-[#c6f0d8] inline-flex items-center gap-1.5">
+          {/* Right Controls: Time Filter Pills + Catat Pesanan Button */}
+          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+            {/* Time Filter Pills */}
+            <div className="bg-[#eefcf4] p-1 rounded-full border border-[#c6f0d8] inline-flex items-center gap-1">
               {(["Semua", "7 hari", "30 hari"] as const).map((tf) => (
                 <button
                   key={tf}
@@ -405,7 +478,7 @@ export default function PesananPage() {
                     setTimeFilter(tf);
                     setCurrentPage(1);
                   }}
-                  className={`px-4.5 py-1.5 text-xs rounded-full transition cursor-pointer ${
+                  className={`px-3 py-1 text-[11px] rounded-full transition cursor-pointer ${
                     timeFilter === tf
                       ? "font-bold bg-[#1B4332] text-white shadow-2xs"
                       : "font-semibold text-gray-500 hover:text-gray-900"
@@ -418,7 +491,7 @@ export default function PesananPage() {
 
             <button
               onClick={() => setIsAddOpen(true)}
-              className="bg-[#1B4332] hover:bg-[#05543c] text-white text-xs font-semibold rounded-full px-5 py-2.5 transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+              className="bg-[#1B4332] hover:bg-[#05543c] text-white text-xs font-semibold rounded-full px-5 py-2.5 transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4" />
               Catat Pesanan
@@ -472,7 +545,7 @@ export default function PesananPage() {
               ) : (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-gray-400 text-xs font-medium">
-                    Tidak ada pesanan yang sesuai.
+                    Tidak ada pesanan yang sesuai dengan filter.
                   </td>
                 </tr>
               )}
@@ -514,11 +587,14 @@ export default function PesananPage() {
         </div>
       </div>
 
-      {/* ── Modal Catat Pesanan (overlay catat pesanan.png) ── */}
+      {/* ── Modal Catat Pesanan ── */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
           <DialogHeader className="pb-3 border-b border-gray-100">
             <DialogTitle className="text-lg font-bold text-gray-900">Catat Pesanan</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Buat pesanan baru dan tambahkan rincian produk
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleAddOrderSubmit} className="space-y-4 py-3 text-xs">
@@ -531,6 +607,46 @@ export default function PesananPage() {
                 className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-gray-700 font-semibold">Metode Pengambilan</Label>
+              <div className="flex items-center gap-4 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium">
+                  <input
+                    type="radio"
+                    name="deliveryMethod"
+                    value="Pickup"
+                    checked={newOrderDeliveryMethod === "Pickup"}
+                    onChange={() => setNewOrderDeliveryMethod("Pickup")}
+                    className="accent-[#1B4332]"
+                  />
+                  Ambil Sendiri (Pickup)
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium">
+                  <input
+                    type="radio"
+                    name="deliveryMethod"
+                    value="Diantar"
+                    checked={newOrderDeliveryMethod === "Diantar"}
+                    onChange={() => setNewOrderDeliveryMethod("Diantar")}
+                    className="accent-[#1B4332]"
+                  />
+                  Diantar Ke Alamat
+                </label>
+              </div>
+            </div>
+
+            {newOrderDeliveryMethod === "Diantar" && (
+              <div className="space-y-1.5">
+                <Label className="text-gray-700 font-semibold">Alamat Pengiriman</Label>
+                <Input
+                  placeholder="Masukkan alamat pengiriman lengkap..."
+                  value={newOrderAlamat}
+                  onChange={(e) => setNewOrderAlamat(e.target.value)}
+                  className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
+                />
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
@@ -580,7 +696,7 @@ export default function PesananPage() {
               </button>
             </div>
 
-            {/* Rincian Produk Section (overlay catat pesanan.png) */}
+            {/* Rincian Produk Section */}
             <div className="pt-4 border-t border-gray-100 space-y-3">
               <h4 className="font-bold text-gray-900 text-xs">Rincian Produk</h4>
               {addedItems.length > 0 ? (
@@ -591,7 +707,17 @@ export default function PesananPage() {
                         <p className="font-semibold text-gray-800 text-xs">{item.name}</p>
                         <p className="text-[11px] text-gray-500">Rp 12.500 x {item.qty.replace(/[^\d.]/g, "")}</p>
                       </div>
-                      <span className="font-bold text-gray-900 text-xs">{item.price}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-gray-900 text-xs">{item.price}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDraftItem(idx)}
+                          className="text-red-500 hover:text-red-700 transition p-1 cursor-pointer"
+                          aria-label="Hapus item"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -620,7 +746,7 @@ export default function PesananPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Modal Detail Pesanan (overlay detail pesanan status ... png) ── */}
+      {/* ── Modal Detail Pesanan ── */}
       {selectedOrder && (
         <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
           <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
@@ -635,68 +761,66 @@ export default function PesananPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 font-medium">ID Pesanan</span>
-                    <span className="font-bold text-gray-900">#TR-KSD234DFGI</span>
+                    <span className="font-bold text-gray-900">{selectedOrder.id}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 font-medium">Tanggal Pesanan</span>
-                    <span className="font-bold text-gray-900">Senin, 20 April 2026</span>
+                    <span className="font-bold text-gray-900">{selectedOrder.date}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 font-medium">Customer</span>
                     <span className="font-bold text-gray-900">{selectedOrder.customer}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400 font-medium">Nomor Telepon</span>
-                    <span className="font-bold text-gray-900">Transfer Virtual Account BCA</span>
+                    <span className="text-gray-400 font-medium">Metode Pembayaran</span>
+                    <span className="font-bold text-gray-900">Transfer Virtual Account</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 font-medium">Status Pesanan</span>
                     <span className={`font-bold text-xs ${
                       selectedOrder.status === "Menunggu" ? "text-red-500" :
-                      selectedOrder.status === "Disiapkan" ? "text-[#22c55e]" :
+                      selectedOrder.status === "Disiapkan" ? "text-amber-600" :
                       selectedOrder.status === "Sedang Dikirim" || selectedOrder.status === "Siap Diambil" ? "text-blue-500" :
-                      "text-emerald-500"
+                      "text-emerald-600"
                     }`}>
-                      {selectedOrder.status === "Menunggu" ? "Menunggu Konfirmasi" :
-                       selectedOrder.status === "Disiapkan" ? "Diproses" :
-                       selectedOrder.status === "Sedang Dikirim" ? "Dikirim" :
-                       selectedOrder.status === "Siap Diambil" ? "Siap Diambil" :
-                       "Selesai"}
+                      {selectedOrder.status}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400 font-medium">Jenis Pesanan</span>
-                    <span className="font-bold text-gray-900">Online</span>
+                    <span className="text-gray-400 font-medium">Metode Pengambilan</span>
+                    <span className={`inline-flex items-center gap-1 border rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${deliveryBadgeClass[selectedOrder.deliveryMethod]}`}>
+                      {selectedOrder.deliveryMethod === "Pickup" ? "Ambil Sendiri" : "Diantar Ke Alamat"}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Section 2: Alamat Pengiriman */}
-              <div className="pt-3 border-t border-gray-100 space-y-1.5">
-                <h4 className="font-bold text-gray-900 text-xs">Alamat Pengiriman</h4>
-                <p className="font-bold text-gray-900 text-xs">
-                  {selectedOrder.customer} (+62) 851 1234 1234
-                </p>
-                <p className="text-gray-400 text-[11px] leading-relaxed">
-                  {selectedOrder.alamat || "Jalan Buah Batu Nomor 128, Kost Buah Batu Kaya, Lantai 2, Kamar 205, Desa Anjing Besar, Kecamatan Lengkong, Kota Bandung, Jawa Barat 40264"}
-                </p>
-              </div>
+              {selectedOrder.deliveryMethod === "Diantar" && (
+                <div className="pt-3 border-t border-gray-100 space-y-1.5">
+                  <h4 className="font-bold text-gray-900 text-xs">Alamat Pengiriman</h4>
+                  <p className="font-bold text-gray-900 text-xs">
+                    {selectedOrder.customer} (+62) 851 1234 1234
+                  </p>
+                  <p className="text-gray-400 text-[11px] leading-relaxed">
+                    {selectedOrder.alamat || "Jalan Buah Batu Nomor 128, Lengkong, Kota Bandung"}
+                  </p>
+                </div>
+              )}
 
-              {/* Section 3: Produk (3 item) */}
+              {/* Section 3: Produk */}
               <div className="pt-3 border-t border-gray-100 space-y-3">
                 <h4 className="font-bold text-gray-900 text-xs">
-                  Produk ({selectedOrder.items?.length || 3} item)
+                  Produk ({selectedOrder.items?.length || 1} item)
                 </h4>
                 <div className="space-y-3">
                   {(selectedOrder.items || [
-                    { name: "Bayam Organik Asal Jember", qty: "2 kg", price: "Rp25.000" },
-                    { name: "Wortel Penyembah Durian", qty: "2 kg", price: "Rp30.000" },
-                    { name: "Bayam Palsu Asal Ngawi", qty: "1 kg", price: "Rp15.000" },
+                    { name: "Bayam Organik", qty: "2 kg", price: "Rp 25.000" },
                   ]).map((item, idx) => (
                     <div key={idx} className="space-y-0.5">
                       <p className="text-gray-400 font-medium text-xs">{item.name}</p>
                       <div className="flex justify-between items-center text-xs font-bold text-gray-900">
-                        <span>Rp12.500 x {item.qty.replace(/[^\d.]/g, "") || "2"}</span>
+                        <span>Qty: {item.qty}</span>
                         <span>{item.price}</span>
                       </div>
                     </div>
@@ -704,7 +828,7 @@ export default function PesananPage() {
                 </div>
               </div>
 
-              {/* Action transitions at bottom (triggers popup confirmation dialogs) */}
+              {/* Action transitions (Fixed for Pickup vs Diantar) */}
               <div className="pt-3 border-t border-gray-100 flex gap-2">
                 {selectedOrder.status === "Menunggu" && (
                   <>
@@ -722,14 +846,17 @@ export default function PesananPage() {
                     </Button>
                   </>
                 )}
+
+                {/* Fixed status transition based on deliveryMethod */}
                 {selectedOrder.status === "Disiapkan" && (
                   <Button
                     onClick={() => setConfirmKirimOrder(selectedOrder)}
                     className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
                   >
-                    Kirim Produk
+                    {selectedOrder.deliveryMethod === "Pickup" ? "Siapkan untuk Diambil" : "Kirim Produk"}
                   </Button>
                 )}
+
                 {(selectedOrder.status === "Sedang Dikirim" || selectedOrder.status === "Siap Diambil") && (
                   <Button
                     onClick={() => setConfirmSelesaiOrder(selectedOrder)}
@@ -753,7 +880,7 @@ export default function PesananPage() {
         </Dialog>
       )}
 
-      {/* ── Dialog Popup Konfirmasi Terima Pesanan (dialog menu terima pesanan.png) ── */}
+      {/* ── Dialog Popup Konfirmasi Terima Pesanan ── */}
       {confirmTerimaOrder && (
         <Dialog open={!!confirmTerimaOrder} onOpenChange={(open) => !open && setConfirmTerimaOrder(null)}>
           <DialogContent className="sm:max-w-xs bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center">
@@ -790,7 +917,7 @@ export default function PesananPage() {
         </Dialog>
       )}
 
-      {/* ── Dialog Popup Konfirmasi Tolak Pesanan (dialog menu tolak pesanan.png) ── */}
+      {/* ── Dialog Popup Konfirmasi Tolak Pesanan ── */}
       {confirmTolakOrder && (
         <Dialog open={!!confirmTolakOrder} onOpenChange={(open) => !open && setConfirmTolakOrder(null)}>
           <DialogContent className="sm:max-w-xs bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center">
@@ -802,7 +929,7 @@ export default function PesananPage() {
               Tolak Pesanan?
             </DialogTitle>
             <p className="text-xs text-gray-500 text-center mt-1 leading-relaxed">
-              Pesanan akan ditolak dan pembayaran akan dikembalikan kepada pembeli
+              Pesanan akan ditolak dan pembeli akan diberikan pemberitahuan
             </p>
 
             <div className="space-y-1.5 text-left pt-3">
@@ -845,19 +972,21 @@ export default function PesananPage() {
         </Dialog>
       )}
 
-      {/* ── Dialog Popup Konfirmasi Kirim Produk (dialog menu kirim produk.png) ── */}
+      {/* ── Dialog Popup Konfirmasi Kirim / Siapkan Pengambilan ── */}
       {confirmKirimOrder && (
         <Dialog open={!!confirmKirimOrder} onOpenChange={(open) => !open && setConfirmKirimOrder(null)}>
           <DialogContent className="sm:max-w-xs bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center">
             <div className="w-14 h-14 rounded-full bg-emerald-100/70 border border-emerald-300 text-[#1B4332] flex items-center justify-center mx-auto mb-3">
-              <Truck className="w-7 h-7" />
+              {confirmKirimOrder.deliveryMethod === "Pickup" ? <MapPin className="w-7 h-7" /> : <Truck className="w-7 h-7" />}
             </div>
 
             <DialogTitle className="text-base font-bold text-gray-900 text-center">
-              Kirim Produk?
+              {confirmKirimOrder.deliveryMethod === "Pickup" ? "Siap untuk Diambil?" : "Kirim Produk?"}
             </DialogTitle>
             <p className="text-xs text-gray-500 text-center mt-1 leading-relaxed">
-              Pilih <span className="font-bold text-gray-800">Kirim</span> jika produk sudah siap dikirim
+              {confirmKirimOrder.deliveryMethod === "Pickup"
+                ? "Pilih Konfirmasi jika produk sudah siap diambil di lokasi"
+                : "Pilih Kirim jika produk sudah siap dikirim ke alamat customer"}
             </p>
 
             <div className="flex items-center gap-3 pt-5">
@@ -870,19 +999,20 @@ export default function PesananPage() {
               </Button>
               <Button
                 onClick={() => {
-                  updateOrderStatus(confirmKirimOrder.id, "Sedang Dikirim");
+                  const targetStatus: OrderStatus = confirmKirimOrder.deliveryMethod === "Pickup" ? "Siap Diambil" : "Sedang Dikirim";
+                  updateOrderStatus(confirmKirimOrder.id, targetStatus);
                   setConfirmKirimOrder(null);
                 }}
                 className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white font-semibold text-xs rounded-xl shadow-xs"
               >
-                Kirim
+                {confirmKirimOrder.deliveryMethod === "Pickup" ? "Siap Diambil" : "Kirim"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       )}
 
-      {/* ── Dialog Popup Konfirmasi Pesanan Terkirim / Selesai (dialog menu produk diterima.png) ── */}
+      {/* ── Dialog Popup Konfirmasi Pesanan Terkirim / Selesai ── */}
       {confirmSelesaiOrder && (
         <Dialog open={!!confirmSelesaiOrder} onOpenChange={(open) => !open && setConfirmSelesaiOrder(null)}>
           <DialogContent className="sm:max-w-xs bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 text-center">

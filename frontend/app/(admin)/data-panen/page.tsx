@@ -9,7 +9,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +41,8 @@ interface PanenAkanDatang {
   umur: number;
   hariLagi: number;
   status: string;
+  kategori?: string;
+  jumlahBibit?: string;
 }
 
 // MVP: 27 SKU komoditas fast-moving yang diizinkan
@@ -80,12 +81,14 @@ const KOMODITAS_CATALOG: { name: string; category: string }[] = [
 const dummyPanenAkanDatang: PanenAkanDatang[] = [
   {
     id: 1,
-    name: "Kangkung Asu",
+    name: "Kangkung Hydroponik",
     targetBerat: "12 kg",
     tanggal: "29 Juli 2026",
     umur: 27,
     hariLagi: 2,
     status: "siap",
+    kategori: "Kangkung",
+    jumlahBibit: "200 bibit",
   },
   {
     id: 2,
@@ -95,24 +98,29 @@ const dummyPanenAkanDatang: PanenAkanDatang[] = [
     umur: 30,
     hariLagi: 4,
     status: "siap",
+    kategori: "Bayam",
+    jumlahBibit: "300 bibit",
   },
   {
     id: 3,
-    name: "Tomat Mantep",
+    name: "Tomat Merah Super",
     targetBerat: "34 kg",
     tanggal: "2 Agustus 2026",
     umur: 25,
     hariLagi: 6,
     status: "siap",
+    kategori: "Tomat",
+    jumlahBibit: "150 bibit",
   },
 ];
 
 let nextPanenId = 100;
+let nextUpcomingId = 50;
 
 const initialProducts: Product[] = [
   {
     id: 1,
-    name: "Kangkung Asu",
+    name: "Kangkung Organik",
     kategori: "Kangkung",
     jenisTanaman: "Sayuran Organik",
     totalberat: "28 kg",
@@ -142,7 +150,7 @@ const initialProducts: Product[] = [
   },
   {
     id: 3,
-    name: "Tomat Mantep",
+    name: "Tomat Merah Super",
     kategori: "Tomat",
     jenisTanaman: "Sayuran",
     totalberat: "34.5 kg",
@@ -172,7 +180,7 @@ const initialProducts: Product[] = [
   },
   {
     id: 5,
-    name: "Pak Choy Gokil",
+    name: "Pak Choy Hijau",
     kategori: "Pak Choy",
     jenisTanaman: "Sayuran Organik",
     totalberat: "120 kg",
@@ -184,21 +192,6 @@ const initialProducts: Product[] = [
     jumlahBibit: "500 bibit",
     status: "dibawah",
     image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=120&q=80",
-  },
-  {
-    id: 6,
-    name: "Kangkung Mantep",
-    kategori: "Kangkung",
-    jenisTanaman: "Sayuran",
-    totalberat: "1 kg",
-    estimasiBerat: "6 kg",
-    selisih: "-5 kg",
-    tanggal: "13/10/2026",
-    tanggalTanam: "10/07/2026",
-    estimasiWaktuTanam: "30 Hari",
-    jumlahBibit: "150 bibit",
-    status: "dibawah",
-    image: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=120&q=80",
   },
 ];
 
@@ -268,8 +261,12 @@ function RiwayatPanenDialog({
 
 export default function DataPanenPage() {
   const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [upcomingCrops, setUpcomingCrops] = useState<PanenAkanDatang[]>(dummyPanenAkanDatang);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"Semua Status" | "Sesuai Estimasi" | "Melebihi Estimasi" | "Dibawah Estimasi">("Semua Status");
   const [currentPage, setCurrentPage] = useState(1);
+  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
+
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -298,33 +295,21 @@ export default function DataPanenPage() {
     jumlahBibit: "100 bibit",
   });
 
-  const handleAddTanamSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTanam.name.trim()) {
-      showToast("Nama tanaman tidak boleh kosong!", "error");
-      return;
-    }
-    showToast(`Data tanam "${newTanam.name}" berhasil dicatat!`, "success");
-    setIsAddTanamOpen(false);
-    setNewTanam({
-      name: "",
-      kategori: "Sayuran",
-      tanggalTanam: "",
-      jumlahBibit: "",
-      estimasiBerat: "",
-      estimasiWaktuTanam: "",
-    });
-  };
-
   const itemsPerPage = 5;
 
   const filteredProducts = useMemo(() => {
-    return products.filter(
-      (p) =>
+    return products.filter((p) => {
+      const matchSearch =
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.kategori.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [products, searchQuery]);
+        p.kategori.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchSearch) return false;
+
+      if (statusFilter === "Sesuai Estimasi") return p.status === "sesuai";
+      if (statusFilter === "Melebihi Estimasi") return p.status === "diatas";
+      if (statusFilter === "Dibawah Estimasi") return p.status === "dibawah";
+      return true;
+    });
+  }, [products, searchQuery, statusFilter]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
 
@@ -345,6 +330,64 @@ export default function DataPanenPage() {
     setDialogOpen(true);
   };
 
+  const handleAddTanamSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTanam.name.trim()) {
+      showToast("Nama tanaman tidak boleh kosong!", "error");
+      return;
+    }
+    nextUpcomingId++;
+    const newCrop: PanenAkanDatang = {
+      id: nextUpcomingId,
+      name: newTanam.name.trim(),
+      targetBerat: `${newTanam.estimasiBerat || "20"} kg`,
+      tanggal: newTanam.tanggalTanam || new Date().toLocaleDateString("id-ID"),
+      umur: 1,
+      hariLagi: parseInt(newTanam.estimasiWaktuTanam) || 30,
+      status: "proses",
+      kategori: newTanam.kategori,
+      jumlahBibit: newTanam.jumlahBibit ? `${newTanam.jumlahBibit} bibit` : "100 bibit",
+    };
+
+    setUpcomingCrops((prev) => [newCrop, ...prev]);
+    showToast(`Data tanam "${newTanam.name}" berhasil dicatat!`, "success");
+    setIsAddTanamOpen(false);
+    setNewTanam({
+      name: "",
+      kategori: "Sayuran",
+      tanggalTanam: "",
+      jumlahBibit: "",
+      estimasiBerat: "",
+      estimasiWaktuTanam: "",
+    });
+  };
+
+  const handlePanenSekarang = (upcomingItem: PanenAkanDatang) => {
+    nextPanenId++;
+    const targetNum = parseFloat(upcomingItem.targetBerat) || 20;
+
+    const newHarvest: Product = {
+      id: nextPanenId,
+      name: upcomingItem.name,
+      kategori: upcomingItem.kategori || "Sayuran",
+      jenisTanaman: "Sayuran Organik",
+      totalberat: `${targetNum} kg`,
+      estimasiBerat: `${targetNum} kg`,
+      selisih: "0 kg",
+      tanggal: new Date().toLocaleDateString("id-ID"),
+      tanggalTanam: upcomingItem.tanggal,
+      estimasiWaktuTanam: `${upcomingItem.umur} Hari`,
+      jumlahBibit: upcomingItem.jumlahBibit || "200 bibit",
+      status: "sesuai",
+      image: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=120&q=80",
+    };
+
+    setProducts((prev) => [newHarvest, ...prev]);
+    setUpcomingCrops((prev) => prev.filter((item) => item.id !== upcomingItem.id));
+    setSelectedUpcoming(null);
+    showToast(`Panen berhasil dicatat! "${upcomingItem.name}" ditambahkan ke riwayat panen`, "success");
+  };
+
   const handleAddPanenSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = newPanen.name.trim();
@@ -360,15 +403,12 @@ export default function DataPanenPage() {
       return;
     }
 
-    // L-13 FIX: Round to avoid floating point precision issues
     const diff = Math.round((realBerat - estBerat) * 100) / 100;
 
-    // L-14 FIX: Use tolerance for "sesuai" status (within ±0.5 kg)
     let status: Product["status"] = "sesuai";
     if (diff > 0.5) status = "diatas";
     else if (diff < -0.5) status = "dibawah";
 
-    // L-15 FIX: Use counter instead of Date.now()
     nextPanenId++;
     const item: Product = {
       id: nextPanenId,
@@ -390,7 +430,6 @@ export default function DataPanenPage() {
     setIsAddOpen(false);
     showToast(`Data panen "${item.name}" berhasil ditambahkan!`, "success");
 
-    // L-07 FIX: Reset form setelah submit
     setNewPanen({
       name: "",
       kategori: "",
@@ -428,64 +467,107 @@ export default function DataPanenPage() {
       <div className="space-y-3">
         <h2 className="text-2xl font-bold text-[#2d6a4f] tracking-tight">Panen yang Akan Datang</h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {dummyPanenAkanDatang.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex flex-col justify-between space-y-4 hover:shadow-[0_6px_24px_rgba(3,59,42,0.10)] transition-all"
-            >
-              <div className="space-y-2">
-                {/* Top Row: Name on left, Countdown badge on right */}
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-bold text-gray-900 text-base leading-tight">
-                    {item.name}
-                  </h3>
-                  <span className="shrink-0 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-full px-3 py-1 whitespace-nowrap">
-                    Dipanen dalam {item.hariLagi} hari
-                  </span>
+        {upcomingCrops.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {upcomingCrops.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex flex-col justify-between space-y-4 hover:shadow-[0_6px_24px_rgba(3,59,42,0.10)] transition-all"
+              >
+                <div className="space-y-2">
+                  {/* Top Row: Name on left, Countdown badge on right */}
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-bold text-gray-900 text-base leading-tight">
+                      {item.name}
+                    </h3>
+                    <span className="shrink-0 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-full px-3 py-1 whitespace-nowrap">
+                      Dipanen dalam {item.hariLagi} hari
+                    </span>
+                  </div>
+
+                  {/* Middle Subtitle: Estimasi | Umur */}
+                  <p className="text-sm text-gray-500 font-medium">
+                    Estimasi {item.targetBerat}
+                    <span className="mx-2 text-gray-300">|</span>
+                    Umur {item.umur} hari
+                  </p>
                 </div>
 
-                {/* Middle Subtitle: Estimasi | Umur */}
-                <p className="text-sm text-gray-500 font-medium">
-                  Estimasi {item.targetBerat}
-                  <span className="mx-2 text-gray-300">|</span>
-                  Umur {item.umur} hari
-                </p>
+                {/* Divider & Bottom Row: Date on left, Detail button on right */}
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <span className="text-sm font-bold text-gray-800">
+                    {item.tanggal}
+                  </span>
+                  <button
+                    onClick={() => setSelectedUpcoming(item)}
+                    className="bg-[#1B4332] hover:bg-[#05543c] text-white text-xs font-semibold rounded-full px-5 py-2 transition cursor-pointer shadow-2xs"
+                  >
+                    Lihat detail
+                  </button>
+                </div>
               </div>
-
-              {/* Divider & Bottom Row: Date on left, Detail button on right */}
-              <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-sm font-bold text-gray-800">
-                  {item.tanggal}
-                </span>
-                <button
-                  onClick={() => setSelectedUpcoming(item)}
-                  className="bg-[#1B4332] hover:bg-[#05543c] text-white text-xs font-semibold rounded-full px-5 py-2 transition cursor-pointer shadow-2xs"
-                >
-                  Lihat detail
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-6 border border-emerald-200 text-center text-gray-500 text-xs italic">
+            Belum ada tanaman yang sedang ditanam. Klik &ldquo;Input Data Tanam&rdquo; untuk menambahkan.
+          </div>
+        )}
       </div>
 
       {/* ── Main Product Table Card ─────────────────────────────── */}
       <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 space-y-5">
-        {/* Table Controls (Search) */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative w-full sm:w-80">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Cari data panen..."
-              className="w-full bg-[#f3f4f6] text-sm text-gray-800 placeholder:text-gray-400 rounded-full pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-[#1B4332]/20 transition"
-            />
-            <Search className="w-4 h-4 text-gray-700 absolute right-3.5 top-1/2 -translate-y-1/2" />
+        {/* Table Controls (Search & Status Filters) */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            {/* Search Input */}
+            <div className="relative w-full sm:w-72">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Cari data panen..."
+                className="w-full bg-[#f3f4f6] text-sm text-gray-800 placeholder:text-gray-400 rounded-full pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-[#1B4332]/20 transition"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+                  aria-label="Bersihkan pencarian"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : (
+                <Search className="w-4 h-4 text-gray-700 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              )}
+            </div>
+
+            {/* Status Filter Pills (Di sebelah kanan Search) */}
+            <div className="bg-gray-100 p-1 rounded-full border border-gray-200 flex items-center gap-1 overflow-x-auto max-w-full w-full sm:w-auto">
+              {(["Semua Status", "Sesuai Estimasi", "Melebihi Estimasi", "Dibawah Estimasi"] as const).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => {
+                    setStatusFilter(st);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1 text-[11px] rounded-full transition whitespace-nowrap cursor-pointer ${
+                    statusFilter === st
+                      ? "font-bold bg-[#1B4332] text-white shadow-2xs"
+                      : "font-medium text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -512,13 +594,20 @@ export default function DataPanenPage() {
 
                     <td className="py-4 pl-2">
                       <div className="flex items-center gap-3">
-                        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100 border border-gray-100">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                          {!failedImages[item.id] ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              onError={() =>
+                                setFailedImages((prev) => ({ ...prev, [item.id]: true }))
+                              }
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Sprout className="w-5 h-5 text-[#1B4332]" />
+                          )}
                         </div>
                         <span className="font-medium text-gray-800 text-sm">{item.name}</span>
                       </div>
@@ -711,7 +800,7 @@ export default function DataPanenPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Modal Input Data Tanam (content.png & header.png) ── */}
+      {/* ── Modal Input Data Tanam ── */}
       <Dialog open={isAddTanamOpen} onOpenChange={setIsAddTanamOpen}>
         <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
           <DialogHeader className="pb-3 border-b border-gray-100 flex items-center justify-between">
@@ -748,6 +837,7 @@ export default function DataPanenPage() {
                 <option value="Wortel">Wortel</option>
                 <option value="Kubis">Kubis</option>
                 <option value="Tomat">Tomat</option>
+                <option value="Kangkung">Kangkung</option>
               </select>
             </div>
 
@@ -772,7 +862,7 @@ export default function DataPanenPage() {
                   <span className="text-[11px] font-semibold text-red-500">Wajib</span>
                 </div>
                 <Input
-                  placeholder="Waktu tanam"
+                  placeholder="Jumlah bibit (contoh: 200)"
                   value={newTanam.jumlahBibit}
                   onChange={(e) => setNewTanam({ ...newTanam, jumlahBibit: e.target.value })}
                   className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
@@ -837,7 +927,7 @@ export default function DataPanenPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Modal Detail Panen Akan Datang (content-3.png & content-4.png) ── */}
+      {/* ── Modal Detail Panen Akan Datang ── */}
       {selectedUpcoming && (
         <Dialog open={!!selectedUpcoming} onOpenChange={(open) => !open && setSelectedUpcoming(null)}>
           <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
@@ -860,7 +950,7 @@ export default function DataPanenPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-gray-700 font-semibold">Jumlah Bibit</Label>
-                  <Input value="250" readOnly className="h-10 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800" />
+                  <Input value={selectedUpcoming.jumlahBibit || "250 bibit"} readOnly className="h-10 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800" />
                 </div>
               </div>
 
@@ -878,10 +968,7 @@ export default function DataPanenPage() {
 
             <DialogFooter className="pt-3 flex flex-col gap-2">
               <Button
-                onClick={() => {
-                  showToast(`Panen sekarang berhasil dicatat untuk ${selectedUpcoming.name}!`, "success");
-                  setSelectedUpcoming(null);
-                }}
+                onClick={() => handlePanenSekarang(selectedUpcoming)}
                 className="w-full bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl h-10 text-xs font-bold cursor-pointer shadow-xs"
               >
                 Panen Sekarang
