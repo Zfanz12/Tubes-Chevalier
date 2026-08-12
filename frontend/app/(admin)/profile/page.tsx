@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, Edit2, LogOut, Eye, EyeOff, Calendar, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { showToast } from "@/lib/custom-toast";
+import { apiFetch } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,7 @@ import { Button } from "@/components/ui/button";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, updateUser, clearAuth } = useAuthStore();
+  const { user, token, updateUser, clearAuth } = useAuthStore();
   
   const [activeTab, setActiveTab] = useState<"pribadi" | "usaha">("pribadi");
 
@@ -58,7 +59,7 @@ export default function ProfilePage() {
   const defaultUsaha = {
     nama_usaha: user?.nama_usaha || "",
     deskripsi_usaha: user?.deskripsi_usaha || "",
-    email_usaha: user?.email || "", // Fallback to user email if separated in future
+    email_usaha: user?.email || "",
     no_hp_usaha: user?.no_hp || "",
     tahun_berdiri: user?.tahun_berdiri || "",
     pengalaman: user?.pengalaman?.toString() || "",
@@ -72,6 +73,84 @@ export default function ProfilePage() {
   const [usahaData, setUsahaData] = useState(defaultUsaha);
   const [usahaErrors, setUsahaErrors] = useState<Record<string, string>>({});
 
+  // Sync form data with current user state
+  useEffect(() => {
+    if (user) {
+      setPribadiData({
+        name: user.name || "",
+        email: user.email || "",
+        no_hp: user.no_hp || "",
+        tanggal_lahir: user.tanggal_lahir || "",
+        jenis_kelamin: user.jenis_kelamin || "Laki-laki",
+        current_password: "",
+        new_password: "",
+        confirm_password: "",
+      });
+      setUsahaData({
+        nama_usaha: user.nama_usaha || "",
+        deskripsi_usaha: user.deskripsi_usaha || "",
+        email_usaha: user.email || "",
+        no_hp_usaha: user.no_hp || "",
+        tahun_berdiri: user.tahun_berdiri || "",
+        pengalaman: user.pengalaman?.toString() || "",
+        provinsi: user.provinsi || "",
+        kota: user.kota || "",
+        alamat: user.alamat || "",
+        jam_buka: user.jam_buka || "",
+        jam_tutup: user.jam_tutup || "",
+        status_operasional: user.status_operasional || "Buka",
+      });
+      if (user.avatar) setAvatarUrl(user.avatar);
+    }
+  }, [user]);
+
+  // --- Phone Number Change & Verification States ---
+  const [isPhoneVerified, setIsPhoneVerified] = useState(true);
+  const [showPhoneOtpModal, setShowPhoneOtpModal] = useState(false);
+  const [phoneOtpCode, setPhoneOtpCode] = useState("");
+  const [inputPhoneOtp, setInputPhoneOtp] = useState("");
+  const [phoneOtpError, setPhoneOtpError] = useState("");
+
+  const isPhoneChanged = (user?.no_hp || "").trim() !== pribadiData.no_hp.trim();
+
+  // Reset phone verification state when phone number is edited
+  const handlePhoneInputChange = (newVal: string) => {
+    setPribadiData((prev) => ({ ...prev, no_hp: newVal }));
+    if (newVal.trim() === (user?.no_hp || "").trim()) {
+      setIsPhoneVerified(true);
+    } else {
+      setIsPhoneVerified(false);
+    }
+  };
+
+  const handleStartPhoneVerification = () => {
+    if (!pribadiData.no_hp.trim() || pribadiData.no_hp.trim().length < 8) {
+      setPribadiErrors((prev) => ({ ...prev, no_hp: "Nomor telepon minimal 8 digit." }));
+      return;
+    }
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    setPhoneOtpCode(otp);
+    setInputPhoneOtp("");
+    setPhoneOtpError("");
+    setShowPhoneOtpModal(true);
+  };
+
+  const handleVerifyPhoneOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputPhoneOtp.trim() === phoneOtpCode) {
+      setIsPhoneVerified(true);
+      setShowPhoneOtpModal(false);
+      setPribadiErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.no_hp;
+        return copy;
+      });
+      showToast(`Nomor WhatsApp ${pribadiData.no_hp} berhasil diverifikasi!`, "success");
+    } else {
+      setPhoneOtpError("Kode OTP salah. Masukkan kode 6 digit yang tertera.");
+    }
+  };
+
   // --- Dirty Tracking ---
   const isPribadiDirty = JSON.stringify(pribadiData) !== JSON.stringify(defaultPribadi) || (activeTab === "pribadi" && isAvatarDirty);
   const isUsahaDirty = JSON.stringify(usahaData) !== JSON.stringify(defaultUsaha) || (activeTab === "usaha" && isAvatarDirty);
@@ -83,7 +162,11 @@ export default function ProfilePage() {
     if (pribadiData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pribadiData.email)) {
       errs.email = "Format email tidak valid.";
     }
-    if (!pribadiData.no_hp.trim()) errs.no_hp = "Nomor Telepon wajib diisi.";
+    if (!pribadiData.no_hp.trim()) {
+      errs.no_hp = "Nomor Telepon wajib diisi.";
+    } else if (isPhoneChanged && !isPhoneVerified) {
+      errs.no_hp = "Nomor telepon baru harus diverifikasi via OTP terlebih dahulu. Klik tombol 'Verifikasi'.";
+    }
     
     if (pribadiData.new_password) {
       if (pribadiData.new_password.length < 6) {
@@ -147,7 +230,6 @@ export default function ProfilePage() {
   };
 
   const confirmDiscard = () => {
-    // Reset state depending on active tab
     if (activeTab === "pribadi") {
       setPribadiData(defaultPribadi);
       setPribadiErrors({});
@@ -176,26 +258,26 @@ export default function ProfilePage() {
   };
 
   const executeSave = async () => {
-    // Simulate network delay
     setShowSaveConfirm(false);
-    showToast("Menyimpan...", "hello"); // simple visual feedback
-    await new Promise(r => setTimeout(r, 600));
+    showToast("Menyimpan profil...", "hello");
+
+    const oldNoHp = (user?.no_hp || "").trim();
+    const newNoHp = pribadiData.no_hp.trim();
+    let updatedPayload: Record<string, any> = {};
 
     if (activeTab === "pribadi") {
-      updateUser({
+      updatedPayload = {
         name: pribadiData.name,
         email: pribadiData.email,
-        no_hp: pribadiData.no_hp,
+        no_hp: newNoHp,
         tanggal_lahir: pribadiData.tanggal_lahir,
         jenis_kelamin: pribadiData.jenis_kelamin as any,
         avatar: avatarUrl,
-      });
+      };
       setIsAvatarDirty(false);
-      // Clear password fields on successful save
-      setPribadiData(prev => ({ ...prev, current_password: "", new_password: "", confirm_password: "" }));
-      showToast("Informasi pribadi berhasil disimpan!", "success");
+      setPribadiData((prev) => ({ ...prev, current_password: "", new_password: "", confirm_password: "" }));
     } else {
-      updateUser({
+      updatedPayload = {
         nama_usaha: usahaData.nama_usaha,
         deskripsi_usaha: usahaData.deskripsi_usaha,
         tahun_berdiri: usahaData.tahun_berdiri,
@@ -207,10 +289,50 @@ export default function ProfilePage() {
         jam_tutup: usahaData.jam_tutup,
         status_operasional: usahaData.status_operasional as any,
         avatar: avatarUrl,
-      });
+      };
       setIsAvatarDirty(false);
-      showToast("Informasi usaha berhasil disimpan!", "success");
     }
+
+    // 1. Update Zustand store
+    updateUser(updatedPayload);
+
+    // 2. Persist per-phone-number profile cache in localStorage & migrate key if phone number changed!
+    if (typeof window !== "undefined") {
+      const oldKey = oldNoHp ? `harvesta_user_profile_${oldNoHp}` : null;
+      const newKey = `harvesta_user_profile_${newNoHp}`;
+      
+      const existingStr = oldKey ? localStorage.getItem(oldKey) : null;
+      const existingObj = existingStr ? JSON.parse(existingStr) : {};
+      const merged = { ...user, ...existingObj, ...updatedPayload, no_hp: newNoHp };
+
+      localStorage.setItem(newKey, JSON.stringify(merged));
+
+      if (oldKey && oldKey !== newKey) {
+        localStorage.removeItem(oldKey);
+      }
+    }
+
+    // 3. Sync to backend API if authenticated
+    if (token) {
+      try {
+        await apiFetch("/petani/profile", {
+          method: "POST",
+          body: {
+            nama: usahaData.nama_usaha || pribadiData.name,
+            alamat: usahaData.alamat,
+          },
+        });
+      } catch {
+        // Silently handle if backend route doesn't match role
+      }
+    }
+
+    showToast(
+      activeTab === "pribadi"
+        ? `Informasi pribadi berhasil disimpan! Nomor akun: ${newNoHp}`
+        : "Informasi usaha berhasil disimpan!",
+      "success"
+    );
   };
 
   const handleSignOut = () => {
@@ -256,8 +378,41 @@ export default function ProfilePage() {
               <input type="file" ref={fileInputRef} onChange={handleAvatarChange} accept="image/*" className="hidden" />
             </div>
             
-            <h2 className="mt-4 text-lg font-bold text-gray-900 text-center">{user?.name || "User"}</h2>
-            <p className="text-sm text-gray-500 text-center font-medium">{user?.email || "Email belum diatur"}</p>
+            {/* Nama: Wrap ke bawah (new line) jika kelebihan */}
+            <h2 className="mt-4 text-lg font-bold text-gray-900 text-center break-words w-full px-2 leading-snug">
+              {user?.name || "User"}
+            </h2>
+
+            {/* Email: Auto Horizontal Scroll (Marquee) Otomatis jika kelebihan */}
+            <div className="w-full overflow-hidden text-center mt-1 px-2">
+              <div
+                className={`inline-block whitespace-nowrap ${
+                  (user?.email || "").length > 22 ? "animate-email-scroll" : ""
+                }`}
+              >
+                <p
+                  className="text-sm text-gray-500 font-medium inline-block"
+                  title={user?.email || "Email belum diatur"}
+                >
+                  {user?.email || "Email belum diatur"}
+                </p>
+              </div>
+            </div>
+
+            <style jsx>{`
+              @keyframes emailScroll {
+                0%, 15% { transform: translateX(0%); }
+                50%, 65% { transform: translateX(-45%); }
+                85%, 100% { transform: translateX(0%); }
+              }
+              .animate-email-scroll {
+                display: inline-block;
+                animation: emailScroll 8s ease-in-out infinite;
+              }
+              .animate-email-scroll:hover {
+                animation-play-state: paused;
+              }
+            `}</style>
           </div>
 
           {/* Navigation Tabs */}
@@ -327,13 +482,37 @@ export default function ProfilePage() {
                     {pribadiErrors.email && <p className="text-red-500 text-xs mt-1">{pribadiErrors.email}</p>}
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nomor Telepon</label>
-                    <input 
-                      type="text"
-                      value={pribadiData.no_hp}
-                      onChange={(e) => setPribadiData({...pribadiData, no_hp: e.target.value})}
-                      className="w-full bg-[#f9fafb] border-transparent focus:bg-white focus:border-[#1B4332] focus:ring-1 focus:ring-[#1B4332] rounded-xl px-4 py-2.5 text-sm outline-none transition"
-                    />
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-gray-700">Nomor Telepon (WhatsApp)</label>
+                      {isPhoneChanged && isPhoneVerified && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <Check className="w-3 h-3" /> Terverifikasi
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative flex items-center">
+                      <input 
+                        type="text"
+                        value={pribadiData.no_hp}
+                        onChange={(e) => handlePhoneInputChange(e.target.value)}
+                        className="w-full bg-[#f9fafb] border-transparent focus:bg-white focus:border-[#1B4332] focus:ring-1 focus:ring-[#1B4332] rounded-xl pl-4 pr-24 py-2.5 text-sm outline-none transition"
+                        placeholder="08xxxxxxxxxx"
+                      />
+                      {isPhoneChanged && !isPhoneVerified && (
+                        <button
+                          type="button"
+                          onClick={handleStartPhoneVerification}
+                          className="absolute right-2 text-xs font-bold text-white bg-[#1B4332] hover:bg-[#0f2a1f] px-3 py-1.5 rounded-lg transition shadow-2xs cursor-pointer"
+                        >
+                          Verifikasi
+                        </button>
+                      )}
+                    </div>
+                    {isPhoneChanged && !isPhoneVerified && (
+                      <p className="text-amber-600 text-[11px] font-medium mt-1">
+                        ⚠️ Nomor diubah. Klik <strong>"Verifikasi"</strong> untuk konfirmasi via OTP.
+                      </p>
+                    )}
                     {pribadiErrors.no_hp && <p className="text-red-500 text-xs mt-1">{pribadiErrors.no_hp}</p>}
                   </div>
                 </div>
@@ -723,6 +902,58 @@ export default function ProfilePage() {
               Buang
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 4. Phone Change OTP Verification Dialog */}
+      <Dialog open={showPhoneOtpModal} onOpenChange={setShowPhoneOtpModal}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-center flex flex-col items-center">
+          <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border-[1.5px] border-emerald-300 mb-2">
+            <Check className="w-8 h-8 text-emerald-600" />
+          </div>
+          <DialogTitle className="text-lg font-bold text-gray-900 mb-1">
+            Verifikasi Nomor WhatsApp Baru
+          </DialogTitle>
+          <DialogDescription className="text-xs text-gray-500 mb-3 font-medium leading-relaxed">
+            Kode OTP 6 digit telah dikirimkan ke nomor WhatsApp <strong className="text-gray-800">{pribadiData.no_hp}</strong>
+          </DialogDescription>
+
+          {/* MOCK OTP DEBUG BANNER (Matches Login Page Debug Style) */}
+          <div className="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-3 mb-4 text-xs text-left">
+            <p className="font-semibold text-emerald-900 mb-0.5">💬 [ MOCK OTP DEBUG ]</p>
+            <p>Kode OTP Anda adalah: <strong className="text-sm tracking-widest text-[#1B4332] font-mono bg-white px-2 py-0.5 rounded border border-emerald-300 ml-1">{phoneOtpCode}</strong></p>
+          </div>
+
+          <form onSubmit={handleVerifyPhoneOtp} className="w-full space-y-3">
+            <div>
+              <input
+                type="text"
+                maxLength={6}
+                value={inputPhoneOtp}
+                onChange={(e) => setInputPhoneOtp(e.target.value.replace(/\D/g, ""))}
+                placeholder="Masukkan 6 Digit OTP"
+                className="w-full bg-[#f9fafb] border border-gray-200 focus:bg-white focus:border-[#1B4332] focus:ring-1 focus:ring-[#1B4332] rounded-xl px-4 py-3 text-center text-lg font-mono font-bold tracking-widest outline-none transition"
+              />
+              {phoneOtpError && <p className="text-red-500 text-xs font-semibold mt-1.5">{phoneOtpError}</p>}
+            </div>
+
+            <div className="flex w-full gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowPhoneOtpModal(false)}
+                className="flex-1 rounded-xl h-11 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 rounded-xl h-11 bg-[#1B4332] hover:bg-[#0f2a1f] text-white font-bold text-sm"
+              >
+                Verifikasi OTP
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

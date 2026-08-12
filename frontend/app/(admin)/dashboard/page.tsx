@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -115,6 +115,7 @@ interface DashboardTx {
   customer: string;
   method: string;
   total: string;
+  rawTotal: number;
   status: "Menunggu" | "Disiapkan" | "Sedang Dikirim" | "Selesai";
   items: { name: string; qty: string; price: string }[];
 }
@@ -126,6 +127,7 @@ const MOCK_TRANSACTIONS: DashboardTx[] = [
     customer: "Budi Santoso",
     method: "Transfer Bank (BCA)",
     total: "Rp 150.000",
+    rawTotal: 150000,
     status: "Disiapkan",
     items: [
       { name: "Bayam Organik", qty: "3 kg", price: "Rp 45.000" },
@@ -138,6 +140,7 @@ const MOCK_TRANSACTIONS: DashboardTx[] = [
     customer: "Siti Rahmawati",
     method: "E-Wallet (QRIS)",
     total: "Rp 85.000",
+    rawTotal: 85000,
     status: "Sedang Dikirim",
     items: [{ name: "Kangkung Hidroponik", qty: "5 kg", price: "Rp 85.000" }],
   },
@@ -147,6 +150,7 @@ const MOCK_TRANSACTIONS: DashboardTx[] = [
     customer: "Ahmad Dahlan",
     method: "COD",
     total: "Rp 210.000",
+    rawTotal: 210000,
     status: "Selesai",
     items: [
       { name: "Sawi Putih", qty: "4 kg", price: "Rp 60.000" },
@@ -159,6 +163,7 @@ const MOCK_TRANSACTIONS: DashboardTx[] = [
     customer: "Dewi Lestari",
     method: "Transfer Bank (Mandiri)",
     total: "Rp 95.000",
+    rawTotal: 95000,
     status: "Menunggu",
     items: [{ name: "Pak Choy", qty: "5 kg", price: "Rp 95.000" }],
   },
@@ -177,6 +182,7 @@ function mapToDashboardTx(t: ApiTransaksi): DashboardTx {
     customer: t.user?.name ?? t.petani?.nama ?? "Pelanggan",
     method: mapMetodePembayaran(t.metode_pembayaran),
     total: formatRupiah(t.total_harga ?? 0),
+    rawTotal: t.total_harga ?? 0,
     status: statusMap[t.status_pesanan] ?? "Menunggu",
     items: t.items?.map((item) => ({
       name: item.produk?.nama_barang ?? `Produk #${item.produk_id}`,
@@ -219,34 +225,6 @@ export default function DashboardPage() {
   const [txLoading, setTxLoading] = useState(true);
   const [hoveredPoint, setHoveredPoint] = useState<{ day: string; val: string; x: number; y: number } | null>(null);
 
-  const fetchRecentTx = useCallback(async () => {
-    if (!token) {
-      setRecentTransactions(MOCK_TRANSACTIONS);
-      setTxLoading(false);
-      return;
-    }
-    try {
-      const data = await getTransaksi(token);
-      if (Array.isArray(data) && data.length > 0) {
-        setRecentTransactions(data.slice(0, 4).map(mapToDashboardTx));
-      } else {
-        setRecentTransactions(MOCK_TRANSACTIONS);
-      }
-    } catch {
-      // Defensive fallback to mock data when API fails
-      setRecentTransactions(MOCK_TRANSACTIONS);
-    } finally {
-      setTxLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    fetchRecentTx();
-  }, [fetchRecentTx]);
-
-  const currentStatCards = range === "7d" ? statCards7d : statCards30d;
-  const currentChartPoints = range === "7d" ? CHART_POINTS_7D : CHART_POINTS_30D;
-
   const toggleHarvest = (name: string) => {
     setHarvestItems((prev) =>
       prev.map((item) => {
@@ -265,27 +243,120 @@ export default function DashboardPage() {
     );
   };
 
+  const fetchRecentTx = useCallback(async () => {
+    if (!token) {
+      setRecentTransactions(MOCK_TRANSACTIONS);
+      setTxLoading(false);
+      return;
+    }
+    try {
+      const data = await getTransaksi(token);
+      if (Array.isArray(data) && data.length > 0) {
+        setRecentTransactions(data.slice(0, 4).map(mapToDashboardTx));
+      } else {
+        setRecentTransactions(MOCK_TRANSACTIONS);
+      }
+    } catch {
+      setRecentTransactions(MOCK_TRANSACTIONS);
+    } finally {
+      setTxLoading(false);
+    }
+  }, [token]);
+
+function parseTxDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  if (dateStr.includes("/")) {
+    const [d, m, y] = dateStr.split("/").map(Number);
+    if (d && m && y) return new Date(y, m - 1, d);
+  }
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) return parsed;
+
+  const monthMap: Record<string, number> = {
+    Jan: 0, Feb: 1, Mar: 2, Apr: 3, Mei: 4, Jun: 5,
+    Jul: 6, Agt: 7, Sep: 8, Okt: 9, Nov: 10, Des: 11
+  };
+  const parts = dateStr.replace(",", "").split(" ");
+  if (parts.length >= 3) {
+    const day = parseInt(parts[0], 10);
+    const mStr = parts[1];
+    const year = parseInt(parts[2], 10);
+    if (day && monthMap[mStr] !== undefined && year) {
+      return new Date(year, monthMap[mStr], day);
+    }
+  }
+  return null;
+}
+
+  // Compute dynamic chart data from real API transactions
+  const dynamicChart = useMemo(() => {
+    const days7 = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+    const weeks30 = ["Minggu 1", "Minggu 2", "Minggu 3", "Minggu 4"];
+    const labels = range === "7d" ? days7 : weeks30;
+    const totals: number[] = new Array(labels.length).fill(0);
+
+    recentTransactions.forEach((tx) => {
+      const d = parseTxDate(tx.date);
+      if (d) {
+        if (range === "7d") {
+          const jsDay = d.getDay();
+          const idx = jsDay === 0 ? 6 : jsDay - 1;
+          if (idx >= 0 && idx < 7) totals[idx] += tx.rawTotal;
+        } else {
+          let wIdx = Math.floor((d.getDate() - 1) / 7);
+          if (wIdx > 3) wIdx = 3;
+          totals[wIdx] += tx.rawTotal;
+        }
+      }
+    });
+
+    const maxVal = Math.max(...totals, 100000);
+    const yMin = 30;
+    const yMax = 160;
+    const step = (470 - 30) / (labels.length - 1);
+
+    const points = labels.map((day, i) => {
+      const x = 30 + i * step;
+      const rawVal = totals[i];
+      const y = yMax - (rawVal / maxVal) * (yMax - yMin);
+      return { day, val: formatRupiah(rawVal), x, y };
+    });
+
+    let pathD = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const cx = prev.x + (curr.x - prev.x) / 2;
+      pathD += ` C ${cx} ${prev.y}, ${cx} ${curr.y}, ${curr.x} ${curr.y}`;
+    }
+    const areaD = `${pathD} L ${points[points.length - 1].x} 180 L ${points[0].x} 180 Z`;
+
+    return { points, pathD, areaD, labels };
+  }, [recentTransactions, range]);
+
+  useEffect(() => {
+    fetchRecentTx();
+  }, [fetchRecentTx]);
+
+  const currentStatCards = range === "7d" ? statCards7d : statCards30d;
+
   return (
     <div className="w-full space-y-6">
-      {/* ── Top Stat Cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {currentStatCards.map((card) =>
-          card.dark ? (
-            /* Card 1: Penjualan (Dark Green Card with Arc Gradient SVG) */
+        {currentStatCards.map((card, idx) =>
+          idx === 0 ? (
             <div
               key={card.label}
-              className="bg-[#1B4332] text-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-[#06543c] ring-1 ring-black/5 relative overflow-hidden flex flex-col items-center justify-between text-center min-h-[155px]"
+              className="bg-[#1B4332] text-white rounded-2xl p-6 shadow-sm flex flex-col justify-between items-center text-center relative overflow-hidden min-h-[155px]"
             >
-              <div className="absolute -top-16 -right-16 w-80 h-80 pointer-events-none opacity-45 overflow-hidden">
-                <svg className="w-full h-full" viewBox="0 0 320 320" fill="none">
-                  <circle cx="250" cy="60" r="280" fill="url(#dashArcGrad1)" opacity="0.35" />
-                  <circle cx="250" cy="60" r="210" fill="url(#dashArcGrad2)" opacity="0.45" />
-                  <circle cx="250" cy="60" r="140" fill="url(#dashArcGrad3)" opacity="0.55" />
-                  <circle cx="250" cy="60" r="80" fill="url(#dashArcGrad4)" opacity="0.65" />
-                  <circle cx="250" cy="60" r="40" fill="url(#dashArcGrad4)" opacity="1" />
+              <div className="absolute -bottom-10 -right-10 w-44 h-44 pointer-events-none opacity-40">
+                <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
+                  <circle cx="160" cy="160" r="140" fill="url(#dashArcGrad1)" />
+                  <circle cx="160" cy="160" r="100" fill="url(#dashArcGrad2)" />
+                  <circle cx="160" cy="160" r="60" fill="url(#dashArcGrad3)" />
                   <defs>
                     <linearGradient id="dashArcGrad1" x1="320" y1="0" x2="0" y2="320" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#2d6a4f" stopOpacity="0.85" />
+                      <stop offset="0%" stopColor="#2d6a4f" stopOpacity="0.8" />
                       <stop offset="100%" stopColor="#1B4332" stopOpacity="0" />
                     </linearGradient>
                     <linearGradient id="dashArcGrad2" x1="320" y1="0" x2="0" y2="320" gradientUnits="userSpaceOnUse">
@@ -296,25 +367,21 @@ export default function DashboardPage() {
                       <stop offset="0%" stopColor="#52b788" stopOpacity="0.95" />
                       <stop offset="100%" stopColor="#1B4332" stopOpacity="0" />
                     </linearGradient>
-                    <linearGradient id="dashArcGrad4" x1="320" y1="0" x2="0" y2="320" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#74c69d" stopOpacity="0.95" />
-                      <stop offset="100%" stopColor="#1B4332" stopOpacity="0" />
-                    </linearGradient>
                   </defs>
                 </svg>
               </div>
 
-              <div className="relative z-10">
-                <span className="text-emerald-100/90 text-sm font-medium block drop-shadow-xs">
+              <div className="relative z-10 space-y-1">
+                <span className="text-emerald-100/90 text-sm font-medium block">
                   {card.label}
                 </span>
-                <p className="text-3xl font-extrabold tracking-tight text-white mt-2 drop-shadow-xs">
+                <p className="text-3xl font-extrabold tracking-tight text-white">
                   {card.value}
                 </p>
               </div>
 
               <div className="mt-4 flex items-center justify-center gap-2 relative z-10">
-                <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur-xs text-emerald-200 text-xs font-semibold px-2.5 py-1 rounded-full border border-white/20 shadow-2xs">
+                <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur-xs text-emerald-200 text-xs font-semibold px-2.5 py-1 rounded-full border border-white/20">
                   <ArrowUpRight className="w-3.5 h-3.5" />
                   {card.change}
                 </span>
@@ -324,21 +391,17 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            /* Card 2 & 3: White Cards */
             <div
               key={card.label}
-              className="bg-white text-gray-900 rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex flex-col items-center justify-between text-center min-h-[155px]"
+              className="bg-white text-gray-900 rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex flex-col justify-between items-center text-center min-h-[155px]"
             >
-              <div>
+              <div className="space-y-1">
                 <span className="text-gray-500 text-sm font-medium block">
                   {card.label}
                 </span>
-                <div className="flex items-center justify-center gap-2 mt-2">
-                  <p className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                    {card.value}
-                  </p>
-                  {card.icon}
-                </div>
+                <p className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                  {card.value}
+                </p>
               </div>
 
               <div className="mt-4 flex items-center justify-center gap-2">
@@ -355,9 +418,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ── Chart & Order Status ── */}
       <div className="grid gap-5 lg:grid-cols-3">
-        {/* Grafik Penjualan */}
         <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-gray-800">
@@ -401,38 +462,10 @@ export default function DashboardPage() {
               <line x1="30" y1="140" x2="470" y2="140" stroke="#f1f5f9" strokeWidth="1" />
               <line x1="30" y1="180" x2="470" y2="180" stroke="#e2e8f0" strokeWidth="1.5" />
               
-              {range === "7d" ? (
-                <>
-                  <path
-                    d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 125, 470 120 L 470 180 L 30 180 Z"
-                    fill="url(#dashChartGradient)"
-                  />
-                  <path
-                    d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 125, 470 120"
-                    fill="none"
-                    stroke="#1B4332"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                </>
-              ) : (
-                <>
-                  <path
-                    d="M 30 150 C 70 100, 110 160, 160 90 C 210 130, 260 70, 310 100 C 360 60, 410 90, 470 50 L 470 180 L 30 180 Z"
-                    fill="url(#dashChartGradient)"
-                  />
-                  <path
-                    d="M 30 150 C 70 100, 110 160, 160 90 C 210 130, 260 70, 310 100 C 360 60, 410 90, 470 50"
-                    fill="none"
-                    stroke="#1B4332"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                </>
-              )}
+              <path d={dynamicChart.areaD} fill="url(#dashChartGradient)" />
+              <path d={dynamicChart.pathD} fill="none" stroke="#1B4332" strokeWidth="3" strokeLinecap="round" />
 
-              {/* Interactive Data Points with Tooltips */}
-              {currentChartPoints.map((pt, i) => (
+              {dynamicChart.points.map((pt, i) => (
                 <g key={i} className="cursor-pointer group">
                   <circle
                     cx={pt.x}
@@ -449,7 +482,6 @@ export default function DashboardPage() {
               ))}
             </svg>
 
-            {/* Floating HTML Tooltip */}
             {hoveredPoint && (
               <div
                 className="absolute bg-gray-900 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-lg pointer-events-none -translate-x-1/2 -translate-y-full mb-2 border border-gray-700 transition-all duration-150"
@@ -463,9 +495,9 @@ export default function DashboardPage() {
             )}
 
             <div className="flex justify-between text-[11px] text-gray-400 font-semibold px-6 mt-2">
-              {range === "7d"
-                ? ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((d) => <span key={d}>{d}</span>)
-                : ["Minggu 1", "Minggu 2", "Minggu 3", "Minggu 4"].map((d) => <span key={d}>{d}</span>)}
+              {dynamicChart.labels.map((d) => (
+                <span key={d}>{d}</span>
+              ))}
             </div>
           </div>
         </div>

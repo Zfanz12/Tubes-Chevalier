@@ -197,6 +197,56 @@ export default function TransaksiPage() {
   // L-12 FIX: chartRange sinkron dengan topTimeFilter
   const chartRange = topTimeFilter === "Bulan Ini" || topTimeFilter === "Tahun Ini" || topTimeFilter === "Semua" ? "30d" : "7d";
 
+  // Dynamic chart calculations from real API transactions
+  const dynamicChartData = useMemo(() => {
+    const days7 = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+    const weeks30 = ["Minggu 1", "Minggu 2", "Minggu 3", "Minggu 4"];
+    const labels = chartRange === "7d" ? days7 : weeks30;
+    const totals: number[] = new Array(labels.length).fill(0);
+
+    transactions.forEach((tx) => {
+      if (tx.status === "Gagal" || tx.status === "Expired") return;
+      const d = parseDDMMYYYY(tx.date) ?? new Date(tx.date);
+      if (!d || isNaN(d.getTime())) return;
+
+      if (chartRange === "7d") {
+        const jsDay = d.getDay();
+        const idx = jsDay === 0 ? 6 : jsDay - 1;
+        if (idx >= 0 && idx < 7) {
+          totals[idx] += tx.rawTotal;
+        }
+      } else {
+        const dayOfMonth = d.getDate();
+        let wIdx = Math.floor((dayOfMonth - 1) / 7);
+        if (wIdx > 3) wIdx = 3;
+        totals[wIdx] += tx.rawTotal;
+      }
+    });
+
+    const maxVal = Math.max(...totals, 100000);
+    const yMin = 30;
+    const yMax = 160;
+    const step = (470 - 30) / (labels.length - 1);
+
+    const points = labels.map((label, i) => {
+      const x = 30 + i * step;
+      const val = totals[i];
+      const y = yMax - (val / maxVal) * (yMax - yMin);
+      return { label, val, x, y, formattedVal: formatRupiah(val) };
+    });
+
+    let pathD = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const cx = prev.x + (curr.x - prev.x) / 2;
+      pathD += ` C ${cx} ${prev.y}, ${cx} ${curr.y}, ${curr.x} ${curr.y}`;
+    }
+    const areaD = `${pathD} L ${points[points.length - 1].x} 180 L ${points[0].x} 180 Z`;
+
+    return { points, pathD, areaD, labels };
+  }, [transactions, chartRange]);
+
   return (
     <div className="w-full space-y-6">
       {/* Loading State */}
@@ -220,7 +270,7 @@ export default function TransaksiPage() {
             <button
               key={filter}
               onClick={() => setTopTimeFilter(filter)}
-              className={`px-4.5 py-1.5 text-xs rounded-full transition cursor-pointer ${
+              className={`px-4 py-1.5 text-xs rounded-full transition cursor-pointer ${
                 topTimeFilter === filter
                   ? "font-bold bg-[#1B4332] text-white shadow-2xs"
                   : "font-semibold text-gray-500 hover:text-gray-900"
@@ -232,20 +282,18 @@ export default function TransaksiPage() {
         </div>
       </div>
 
-      {/* ── Top 3 Stat Cards ─────────────────────────── */}
+      {/* ── 3 Stat Cards ────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Card 1: Total Pendapatan */}
-        <div className="bg-[#1B4332] text-white rounded-2xl p-6 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-[#06543c] ring-1 ring-black/5 relative overflow-hidden flex flex-col items-center justify-between text-center min-h-[155px]">
-          <div className="absolute -top-16 -right-16 w-80 h-80 pointer-events-none opacity-45 overflow-hidden">
-            <svg className="w-full h-full" viewBox="0 0 320 320" fill="none">
-              <circle cx="250" cy="60" r="280" fill="url(#arcGrad1)" opacity="0.35" />
-              <circle cx="250" cy="60" r="210" fill="url(#arcGrad2)" opacity="0.45" />
-              <circle cx="250" cy="60" r="140" fill="url(#arcGrad3)" opacity="0.55" />
-              <circle cx="250" cy="60" r="80" fill="url(#arcGrad4)" opacity="0.65" />
-              <circle cx="250" cy="60" r="40" fill="url(#arcGrad4)" opacity="1" />
+        <div className="bg-[#1B4332] text-white rounded-2xl p-6 shadow-sm flex flex-col items-center justify-between text-center relative overflow-hidden min-h-[155px]">
+          <div className="absolute -bottom-10 -right-10 w-44 h-44 pointer-events-none opacity-40">
+            <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
+              <circle cx="160" cy="160" r="140" fill="url(#arcGrad1)" />
+              <circle cx="160" cy="160" r="100" fill="url(#arcGrad2)" />
+              <circle cx="160" cy="160" r="60" fill="url(#arcGrad3)" />
               <defs>
                 <linearGradient id="arcGrad1" x1="320" y1="0" x2="0" y2="320" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#2d6a4f" stopOpacity="0.85" />
+                  <stop offset="0%" stopColor="#2d6a4f" stopOpacity="0.8" />
                   <stop offset="100%" stopColor="#1B4332" stopOpacity="0" />
                 </linearGradient>
                 <linearGradient id="arcGrad2" x1="320" y1="0" x2="0" y2="320" gradientUnits="userSpaceOnUse">
@@ -254,10 +302,6 @@ export default function TransaksiPage() {
                 </linearGradient>
                 <linearGradient id="arcGrad3" x1="320" y1="0" x2="0" y2="320" gradientUnits="userSpaceOnUse">
                   <stop offset="0%" stopColor="#52b788" stopOpacity="0.95" />
-                  <stop offset="100%" stopColor="#1B4332" stopOpacity="0" />
-                </linearGradient>
-                <linearGradient id="arcGrad4" x1="320" y1="0" x2="0" y2="320" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#74c69d" stopOpacity="0.95" />
                   <stop offset="100%" stopColor="#1B4332" stopOpacity="0" />
                 </linearGradient>
               </defs>
@@ -332,11 +376,11 @@ export default function TransaksiPage() {
         </div>
       </div>
 
-      {/* ── Middle Section: Sales Chart & Payment Methods ──────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Grafik Penjualan — L-12 FIX: chartRange otomatis sinkron dengan topTimeFilter */}
-        <Card className="bg-white rounded-2xl border border-emerald-300 ring-1 ring-black/5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] lg:col-span-2">
-          <CardHeader className="pb-4">
+      {/* ── Charts Row ────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Grafik Penjualan */}
+        <Card className="lg:col-span-2 border-emerald-300 shadow-[0_4px_20px_rgba(3,59,42,0.06)] ring-1 ring-black/5 rounded-2xl bg-white">
+          <CardHeader className="pt-6 pb-2 px-6">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold text-gray-800">
                 Grafik Penjualan
@@ -348,7 +392,7 @@ export default function TransaksiPage() {
           </CardHeader>
           <CardContent className="pt-2 pb-6 px-6">
             <div className="h-56 w-full relative">
-              <svg viewBox="0 0 500 200" className="w-full h-full">
+              <svg viewBox="0 0 500 200" className="w-full h-full overflow-visible">
                 <defs>
                   <linearGradient id="transaksiChartGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#1B4332" stopOpacity="0.2" />
@@ -360,60 +404,25 @@ export default function TransaksiPage() {
                 <line x1="30" y1="100" x2="470" y2="100" stroke="#f1f5f9" strokeWidth="1" />
                 <line x1="30" y1="140" x2="470" y2="140" stroke="#f1f5f9" strokeWidth="1" />
                 <line x1="30" y1="180" x2="470" y2="180" stroke="#e2e8f0" strokeWidth="1.5" />
-                {chartRange === "7d" ? (
-                  <>
-                    <path
-                      d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 135, 470 120 L 470 180 L 30 180 Z"
-                      fill="url(#transaksiChartGradient)"
-                    />
-                    <path
-                      d="M 30 160 C 80 140, 120 130, 170 140 C 220 150, 270 110, 320 110 C 370 110, 420 135, 470 120"
-                      fill="none"
-                      stroke="#1B4332"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                    {[
-                      [30, 160],
-                      [170, 140],
-                      [320, 110],
-                      [420, 125],
-                      [470, 120],
-                    ].map(([x, y], i) => (
-                      <circle key={i} cx={x} cy={y} r="4" fill="#1B4332" stroke="white" strokeWidth="2" />
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    <path
-                      d="M 30 150 C 70 100, 110 160, 160 90 C 210 130, 260 70, 310 100 C 360 60, 410 90, 470 50 L 470 180 L 30 180 Z"
-                      fill="url(#transaksiChartGradient)"
-                    />
-                    <path
-                      d="M 30 150 C 70 100, 110 160, 160 90 C 210 130, 260 70, 310 100 C 360 60, 410 90, 470 50"
-                      fill="none"
-                      stroke="#1B4332"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                    {[
-                      [30, 150],
-                      [90, 130],
-                      [160, 90],
-                      [235, 110],
-                      [310, 100],
-                      [385, 75],
-                      [470, 50],
-                    ].map(([x, y], i) => (
-                      <circle key={i} cx={x} cy={y} r="4" fill="#1B4332" stroke="white" strokeWidth="2" />
-                    ))}
-                  </>
-                )}
+                
+                <path d={dynamicChartData.areaD} fill="url(#transaksiChartGradient)" />
+                <path d={dynamicChartData.pathD} fill="none" stroke="#1B4332" strokeWidth="3" strokeLinecap="round" />
+                
+                {dynamicChartData.points.map((pt, i) => (
+                  <g key={i} className="group/pt cursor-pointer">
+                    <circle cx={pt.x} cy={pt.y} r="5" fill="#1B4332" stroke="white" strokeWidth="2" className="transition-all group-hover/pt:r-7" />
+                    {/* Tooltip on hover */}
+                    <g className="opacity-0 group-hover/pt:opacity-100 transition-opacity pointer-events-none">
+                      <rect x={pt.x - 48} y={pt.y - 32} width="96" height="24" rx="6" fill="#1B4332" />
+                      <text x={pt.x} y={pt.y - 16} fill="white" fontSize="10" fontWeight="bold" textAnchor="middle">
+                        {pt.formattedVal}
+                      </text>
+                    </g>
+                  </g>
+                ))}
               </svg>
               <div className="flex justify-between text-[11px] text-gray-400 font-semibold px-6 mt-2">
-                {chartRange === "7d"
-                  ? ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((d) => <span key={d}>{d}</span>)
-                  : ["Minggu 1", "Minggu 2", "Minggu 3", "Minggu 4"].map((d) => <span key={d}>{d}</span>)}
+                {dynamicChartData.labels.map((d) => <span key={d}>{d}</span>)}
               </div>
             </div>
           </CardContent>

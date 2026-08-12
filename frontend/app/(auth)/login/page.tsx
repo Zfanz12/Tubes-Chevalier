@@ -66,6 +66,8 @@ export default function LoginPage() {
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setErrorMsg(null);
 
     try {
       const res = await apiFetch<SendOtpResponse>("/send-otp", {
@@ -79,7 +81,7 @@ export default function LoginPage() {
       showToast("OTP berhasil dikirim ke WhatsApp Anda!", "success");
     } catch (err: unknown) {
       const error = err as { message?: string };
-      setErrorMsg(error?.message ?? "Terjadi kesalahan. Coba lagi.");
+      setErrorMsg(error?.message ?? "Gagal mengirim OTP. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
     }
@@ -96,8 +98,26 @@ export default function LoginPage() {
         body: { no_hp: noHp, otp },
       });
 
-      setAuth(res.user, res.access_token);
-      showToast(`Selamat datang, ${res.user.name}`, "hello");
+      const localProfileKey = `harvesta_user_profile_${res.user.no_hp}`;
+      const savedProfileStr = typeof window !== "undefined" ? localStorage.getItem(localProfileKey) : null;
+      let mergedUser = res.user;
+
+      if (savedProfileStr) {
+        try {
+          const savedObj = JSON.parse(savedProfileStr);
+          if (savedObj && typeof savedObj === "object") {
+            mergedUser = { ...res.user, ...savedObj, no_hp: res.user.no_hp };
+          }
+        } catch {
+          localStorage.removeItem(localProfileKey);
+        }
+      }
+
+      setAuth(mergedUser, res.access_token);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("harvesta_sidebar_open", "true");
+      }
+      showToast(`Selamat datang, ${mergedUser.name}`, "hello");
 
       router.push("/dashboard");
     } catch (err: unknown) {
@@ -214,11 +234,7 @@ export default function LoginPage() {
               disabled={isLoading}
               className="w-full h-11 sm:h-12 mt-2 rounded-full bg-[#0D382A] hover:bg-[#08261C] text-white font-semibold text-sm sm:text-base shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <ArrowRight className="w-4 h-4" />
-              )}
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               {isLoading ? "Mengirim OTP..." : "Kirim OTP"}
             </Button>
           </form>

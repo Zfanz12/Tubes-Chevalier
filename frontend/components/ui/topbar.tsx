@@ -136,7 +136,7 @@ export default function Topbar() {
                   className="flex items-center gap-2.5 bg-[#4c7766]/80 hover:bg-[#588774] transition px-3.5 py-1.5 rounded-full text-white cursor-pointer outline-none shadow-xs border border-emerald-600/30"
                 >
                   <Avatar className="w-8 h-8 ring-1 ring-white/30">
-                    <AvatarImage src={user?.avatar || ""} alt={user?.name ?? "User"} />
+                    {user?.avatar && <AvatarImage src={user.avatar} alt={user.name ?? "User"} />}
                     <AvatarFallback className="bg-emerald-800 text-emerald-200 text-xs font-semibold">
                       {user ? getInitials(user.name) : "??"}
                     </AvatarFallback>

@@ -504,9 +504,11 @@ export default function ProdukPage() {
   };
 
   const executeEditProduct = async () => {
+    if (!editingProduct) return;
     setShowEditSubmitConfirmModal(false);
     setIsSubmitting(true);
 
+    const productId = editingProduct.id;
     const numericStock = parseFloat(formData.stock) || 0;
     const numericPrice = parseFloat(formData.price.replace(/[^\d]/g, "")) || 0;
     const finalUnit =
@@ -525,7 +527,7 @@ export default function ProdukPage() {
 
     setProducts((prev) =>
       prev.map((item) =>
-        item.id === editingProduct.id
+        item.id === productId
           ? {
               ...item,
               name: formData.name.trim(),
@@ -543,7 +545,7 @@ export default function ProdukPage() {
 
     if (token && user?.role === "petani") {
       try {
-        await updateProduk(token, editingProduct.id, {
+        await updateProduk(token, productId, {
           nama_barang: formData.name.trim(),
           stok: numericStock,
           harga: numericPrice,

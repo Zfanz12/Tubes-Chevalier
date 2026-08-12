@@ -247,7 +247,7 @@ export default function PesananPage() {
 
   const handleRemoveDraftItem = (index: number) => {
     setAddedItems((prev) => prev.filter((_, i) => i !== index));
-    showToast("Item dihapus dari rincian pesanan", "info");
+    showToast("Item dihapus dari rincian pesanan", "success");
   };
 
   const handleAddOrderSubmit = (e: React.FormEvent) => {

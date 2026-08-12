@@ -40,12 +40,17 @@ const menuItems = [
 export default function Sidebar() {
   const { isOpen, toggle } = useSidebar();
   const pathname = usePathname();
+  const isProfilePage = pathname === "/profile";
 
   return (
     <aside
       className={cn(
         "relative bg-[#1B4332] text-white flex flex-col min-h-screen transition-all duration-300 ease-in-out shrink-0 z-40",
-        isOpen ? "w-60" : "w-16"
+        isProfilePage
+          ? "-translate-x-full w-0 opacity-0 pointer-events-none border-0 p-0 shadow-none duration-300 overflow-hidden"
+          : isOpen
+          ? "w-60 translate-x-0 opacity-100 duration-300"
+          : "w-16 translate-x-0 opacity-100 duration-300"
       )}
     >
       {/* Brand Header */}
@@ -82,9 +87,9 @@ export default function Sidebar() {
           <Image
             src="/logo-harvesta-mimized.png"
             alt="Harvesta Icon"
-            width={44}
-            height={44}
-            className="object-contain h-11 w-11 mt-4 mb-4"
+            width={48}
+            height={48}
+            className="object-contain h-16 w-16 mt-4 mb-4"
             priority
           />
         </div>
