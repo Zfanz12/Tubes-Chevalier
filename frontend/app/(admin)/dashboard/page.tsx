@@ -565,9 +565,10 @@ export default function DashboardPage() {
         </div>
 
         {txLoading ? (
-          <div className="flex items-center justify-center py-10 gap-2 text-gray-400">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-xs font-medium">Memuat transaksi...</span>
+          <div className="space-y-3 py-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="animate-shimmer h-12 w-full rounded-xl" />
+            ))}
           </div>
         ) : recentTransactions.length === 0 ? (
           <p className="text-center text-xs text-gray-400 py-8">Belum ada transaksi.</p>

@@ -185,7 +185,7 @@ const PesananSkeleton = () => (
 );
 
 // ── 4. Transaksi Skeleton (1:1 Match) ───────────────────────────
-const TransaksiSkeleton = () => (
+export const TransaksiSkeleton = () => (
   <div className="w-full space-y-6 p-4 lg:p-6">
     {/* Top Filter Pills */}
     <div className="flex gap-2">

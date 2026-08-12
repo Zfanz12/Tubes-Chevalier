@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, ArrowUpRight, Users, Loader2, AlertCircle } from "lucide-react";
+import { TransaksiSkeleton } from "../template";
 import { getTransaksi, formatRupiah, formatTanggal, mapMetodePembayaran, type ApiTransaksi } from "@/lib/api";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -199,12 +200,7 @@ export default function TransaksiPage() {
   return (
     <div className="w-full space-y-6">
       {/* Loading State */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-16 gap-3 text-gray-500">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm font-medium">Memuat data transaksi...</span>
-        </div>
-      )}
+      {isLoading && <TransaksiSkeleton />}
 
       {/* Error State */}
       {fetchError && !isLoading && (
