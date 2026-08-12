@@ -49,14 +49,14 @@ export default function Sidebar() {
       )}
     >
       {/* Brand Header */}
-      <div className="relative min-h-[140px] w-full overflow-hidden flex items-center justify-center pt-6 pb-6">
+      <div className="relative min-h-[145px] w-full overflow-hidden flex items-center justify-center pt-6 pb-6">
         {/* Full Logo (Expanded Mode) */}
         <div
           className={cn(
             "absolute inset-0 flex items-center justify-center px-4 transition-all duration-300 ease-in-out",
             isOpen
-              ? "opacity-100 scale-100 pointer-events-auto delay-100"
-              : "opacity-0 scale-90 pointer-events-none delay-0"
+              ? "opacity-100 scale-100 pointer-events-auto"
+              : "opacity-0 scale-90 pointer-events-none"
           )}
         >
           <Image
@@ -65,7 +65,7 @@ export default function Sidebar() {
             width={160}
             height={62}
             style={{ width: "auto" }}
-            className="object-contain h-[80px] mt-4 mb-4"
+            className="object-contain h-[100px] mt-10 mb-6"
             priority
           />
         </div>
@@ -75,8 +75,8 @@ export default function Sidebar() {
           className={cn(
             "absolute inset-0 flex items-center justify-center transition-all duration-300 ease-in-out",
             !isOpen
-              ? "opacity-100 scale-100 pointer-events-auto delay-150"
-              : "opacity-0 scale-75 pointer-events-none delay-0"
+              ? "opacity-100 scale-100 pointer-events-auto"
+              : "opacity-0 scale-90 pointer-events-none"
           )}
         >
           <Image
