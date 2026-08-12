@@ -49,19 +49,41 @@ export default function Sidebar() {
       )}
     >
       {/* Brand Header */}
-      <div className="flex items-center justify-center p-4 min-h-[90px] transition-all duration-300 ease-in-out overflow-hidden">
-        <Image
-          src="/logo-harvesta.png"
-          alt="Harvesta Logo"
-          width={160}
-          height={62}
-          style={{ width: "auto" }}
+      <div className="relative flex items-center justify-center p-4 min-h-[90px] w-full overflow-hidden">
+        {/* Full Logo (Expanded Mode) */}
+        <div
           className={cn(
-            "object-contain transition-all duration-300 ease-in-out",
-            isOpen ? "mt-4 h-24" : "mt-4 h-10"
+            "transition-all duration-300 ease-in-out flex items-center justify-center",
+            isOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none absolute"
           )}
-          priority
-        />
+        >
+          <Image
+            src="/logo-harvesta.png"
+            alt="Harvesta Logo"
+            width={160}
+            height={62}
+            style={{ width: "auto" }}
+            className="object-contain mt-4 h-24"
+            priority
+          />
+        </div>
+
+        {/* Favicon Logo (Collapsed Mode) */}
+        <div
+          className={cn(
+            "transition-all duration-300 ease-in-out flex items-center justify-center",
+            !isOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none absolute"
+          )}
+        >
+          <Image
+            src="/favicon.png"
+            alt="Harvesta Icon"
+            width={36}
+            height={36}
+            className="object-contain h-9 w-9 mt-4"
+            priority
+          />
+        </div>
       </div>
 
       {/* Collapse / Expand Toggle Button */}
@@ -98,12 +120,27 @@ export default function Sidebar() {
                   : "text-emerald-100/90 hover:bg-[#2d5746] hover:text-white"
               )}
             >
-              <Icon
-                className={cn(
-                  "w-5 h-5 shrink-0 transition-all duration-300",
-                  isActive ? "fill-current" : "fill-none"
+              {/* Icon Container with relative position for collapsed badge */}
+              <div className="relative flex items-center justify-center shrink-0">
+                <Icon
+                  className={cn(
+                    "w-5 h-5 shrink-0 transition-all duration-300",
+                    isActive ? "fill-current" : "fill-none"
+                  )}
+                />
+
+                {/* Collapsed Badge (Overlaid on top-right of Icon to prevent cropping) */}
+                {!isOpen && item.badge && (
+                  <span
+                    className={cn(
+                      "absolute -top-1.5 -right-2 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 shadow-sm z-20 transition-all duration-300",
+                      isActive ? "border-[#658d7c]" : "border-[#1B4332]"
+                    )}
+                  >
+                    {item.badge}
+                  </span>
                 )}
-              />
+              </div>
 
               {/* Text Label with Smooth Opacity & Width Transition */}
               <span
@@ -117,16 +154,9 @@ export default function Sidebar() {
                 {item.name}
               </span>
 
-              {/* Badge with Smooth Fade */}
-              {item.badge && (
-                <span
-                  className={cn(
-                    "bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ease-in-out",
-                    isOpen
-                      ? "w-5 h-5 opacity-100 ml-2"
-                      : "w-4 h-4 opacity-100 absolute -top-1 -right-1 text-[10px]"
-                  )}
-                >
+              {/* Expanded Badge */}
+              {isOpen && item.badge && (
+                <span className="bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0 ml-2 transition-all duration-300 ease-in-out">
                   {item.badge}
                 </span>
               )}
