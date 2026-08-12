@@ -5,14 +5,8 @@ import { usePathname } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Skeleton Component Switcher ─────────────────────────────────
-// Option A: 100% Official Shadcn UI Skeleton (Commented)
-// const SkeletonWave = ({ className }: { className?: string }) => (
-//   <Skeleton className={className} />
-// );
-
-// Option B: Custom Wave / Shimmer Animation (Active)
 const SkeletonWave = ({ className }: { className?: string }) => (
-  <div className={`animate-shimmer rounded-lg ${className || ""}`} />
+  <Skeleton className={`animate-shimmer bg-gray-200/90 ${className || ""}`} />
 );
 
 // ── 1. Dashboard Skeleton (1:1 Match) ───────────────────────────
@@ -530,15 +524,15 @@ export default function AdminTemplate({ children }: { children: React.ReactNode 
     setLoading(true);
     setFadeOut(false);
 
-    // 0.3s fake skeleton load, then start fade out
+    // 0.45s skeleton load, then start fade out
     const fadeTimer = setTimeout(() => {
       setFadeOut(true);
-    }, 300);
+    }, 450);
 
-    // Completely unmount skeleton after 0.3s fade out animation (total 600ms)
+    // Completely unmount skeleton after fade out (total 750ms)
     const removeTimer = setTimeout(() => {
       setLoading(false);
-    }, 600);
+    }, 750);
 
     return () => {
       clearTimeout(fadeTimer);
