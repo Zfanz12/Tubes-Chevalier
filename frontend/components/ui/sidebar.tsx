@@ -68,7 +68,7 @@ export default function Sidebar() {
           />
         </div>
 
-        {/* Favicon Logo (Collapsed Mode) */}
+        {/* Minimized Logo (Collapsed Mode) */}
         <div
           className={cn(
             "transition-all duration-300 ease-in-out flex items-center justify-center",
@@ -76,11 +76,11 @@ export default function Sidebar() {
           )}
         >
           <Image
-            src="/favicon.png"
+            src="/logo-harvesta-mimized.png"
             alt="Harvesta Icon"
-            width={36}
-            height={36}
-            className="object-contain h-9 w-9 mt-4"
+            width={40}
+            height={40}
+            className="object-contain h-10 w-10 mt-4"
             priority
           />
         </div>
