@@ -122,10 +122,10 @@ const ProdukSkeleton = () => (
         <SkeletonWave className="h-10 w-full sm:w-80 rounded-full" />
         <SkeletonWave className="h-10 w-full sm:w-36 rounded-full" />
       </div>
-      <div className="space-y-3">
-        <SkeletonWave className="h-10 w-full rounded-lg" />
+      <div className="flex flex-col">
+        <SkeletonWave className="h-[60px] w-full border-b border-gray-50 rounded-none" />
         {[1, 2, 3, 4, 5].map((i) => (
-          <SkeletonWave key={i} className="h-16 w-full rounded-xl" />
+          <SkeletonWave key={i} className="h-[64px] w-full border-b border-gray-50 rounded-none last:border-0" />
         ))}
       </div>
     </div>
@@ -173,10 +173,10 @@ const PesananSkeleton = () => (
       </div>
       
       {/* Table Rows */}
-      <div className="space-y-3">
-        <SkeletonWave className="h-10 w-full rounded-lg" />
+      <div className="flex flex-col">
+        <SkeletonWave className="h-[60px] w-full border-b border-gray-50 rounded-none" />
         {[1, 2, 3, 4, 5].map((i) => (
-          <SkeletonWave key={i} className="h-16 w-full rounded-xl" />
+          <SkeletonWave key={i} className="h-[64px] w-full border-b border-gray-50 rounded-none last:border-0" />
         ))}
       </div>
       
@@ -204,7 +204,7 @@ export const TransaksiSkeleton = () => (
     {/* 3 Stat Cards */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 min-h-[140px] flex flex-col justify-between items-center text-center space-y-3">
+        <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 min-h-[155px] flex flex-col justify-between items-center text-center space-y-3">
           <SkeletonWave className="h-4 w-36" />
           <SkeletonWave className="h-8 w-24" />
           <SkeletonWave className="h-4 w-40 rounded-full" />
@@ -219,11 +219,11 @@ export const TransaksiSkeleton = () => (
           <SkeletonWave className="h-6 w-36" />
           <SkeletonWave className="h-4 w-20" />
         </div>
-        <SkeletonWave className="h-52 w-full rounded-xl" />
+        <SkeletonWave className="h-[280px] w-full rounded-xl" />
       </div>
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
         <SkeletonWave className="h-6 w-40" />
-        <SkeletonWave className="h-52 w-full rounded-xl" />
+        <SkeletonWave className="h-[280px] w-full rounded-xl" />
       </div>
     </div>
 
@@ -237,10 +237,10 @@ export const TransaksiSkeleton = () => (
           <SkeletonWave className="h-8 w-16 rounded-full" />
         </div>
       </div>
-      <div className="space-y-3">
-        <SkeletonWave className="h-10 w-full rounded-lg" />
+      <div className="flex flex-col">
+        <SkeletonWave className="h-[60px] w-full border-b border-gray-50 rounded-none" />
         {[1, 2, 3, 4, 5].map((i) => (
-          <SkeletonWave key={i} className="h-14 w-full rounded-xl" />
+          <SkeletonWave key={i} className="h-[56px] w-full border-b border-gray-50 rounded-none last:border-0" />
         ))}
       </div>
     </div>
@@ -381,10 +381,10 @@ const DataPanenSkeleton = () => (
       </div>
       
       {/* Table Rows */}
-      <div className="space-y-3">
-        <SkeletonWave className="h-10 w-full rounded-lg" />
+      <div className="flex flex-col">
+        <SkeletonWave className="h-[60px] w-full border-b border-gray-50 rounded-none" />
         {[1, 2, 3, 4, 5].map((i) => (
-          <SkeletonWave key={i} className="h-16 w-full rounded-xl" />
+          <SkeletonWave key={i} className="h-[64px] w-full border-b border-gray-50 rounded-none last:border-0" />
         ))}
       </div>
       
