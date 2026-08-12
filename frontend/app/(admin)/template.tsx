@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// A reusable shimmer component for the "wave" animation
+// ── Skeleton Component Switcher ─────────────────────────────────
+// Option A: 100% Official Shadcn UI Skeleton (Active)
 const SkeletonWave = ({ className }: { className?: string }) => (
-  <div className={`animate-shimmer rounded-lg ${className || ""}`} />
+  <Skeleton className={className} />
 );
+
+// Option B: Custom Wave / Shimmer Animation (Commented for easy revert)
+// const SkeletonWave = ({ className }: { className?: string }) => (
+//   <div className={`animate-shimmer rounded-lg ${className || ""}`} />
+// );
 
 // ── 1. Dashboard Skeleton (1:1 Match) ───────────────────────────
 const DashboardSkeleton = () => (

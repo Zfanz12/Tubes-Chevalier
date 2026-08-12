@@ -11,6 +11,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -567,7 +568,7 @@ export default function DashboardPage() {
         {txLoading ? (
           <div className="space-y-3 py-2">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="animate-shimmer h-12 w-full rounded-xl" />
+              <Skeleton key={i} className="h-12 w-full rounded-xl" />
             ))}
           </div>
         ) : recentTransactions.length === 0 ? (
