@@ -17,7 +17,7 @@ const SkeletonWave = ({ className }: { className?: string }) => (
 
 // ── 1. Dashboard Skeleton (1:1 Match) ───────────────────────────
 const DashboardSkeleton = () => (
-  <div className="w-full space-y-6 p-4 lg:p-6">
+  <div className="w-full space-y-6">
     {/* Top 3 Stat Cards */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 min-h-[155px] flex flex-col justify-between items-center">
@@ -102,7 +102,7 @@ const DashboardSkeleton = () => (
 
 // ── 2. Produk Skeleton (1:1 Match) ──────────────────────────────
 const ProdukSkeleton = () => (
-  <div className="w-full space-y-6 p-4 lg:p-6">
+  <div className="w-full space-y-6">
     {/* 4 Stat Cards */}
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
       {[1, 2, 3, 4].map((i) => (
@@ -134,7 +134,7 @@ const ProdukSkeleton = () => (
 
 // ── 3. Pesanan Skeleton (1:1 Match) ─────────────────────────────
 const PesananSkeleton = () => (
-  <div className="w-full space-y-6 p-4 lg:p-6">
+  <div className="w-full space-y-6">
     {/* 4 Stat Cards */}
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
       {[1, 2, 3, 4].map((i) => (
@@ -193,7 +193,7 @@ const PesananSkeleton = () => (
 
 // ── 4. Transaksi Skeleton (1:1 Match) ───────────────────────────
 export const TransaksiSkeleton = () => (
-  <div className="w-full space-y-6 p-4 lg:p-6">
+  <div className="w-full space-y-6">
     {/* Top Filter Pills */}
     <div className="flex gap-2">
       {[1, 2, 3, 4].map((i) => (
@@ -249,7 +249,7 @@ export const TransaksiSkeleton = () => (
 
 // ── 5. Insight Skeleton (1:1 Match) ─────────────────────────────
 const InsightSkeleton = () => (
-  <div className="w-full space-y-6 p-4 lg:p-6">
+  <div className="w-full space-y-6">
     {/* 3 Top Large Cards */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
       {[1, 2, 3].map((i) => (
@@ -308,7 +308,7 @@ const InsightSkeleton = () => (
 
 // ── 6. Profile Skeleton (1:1 Match) ─────────────────────────────
 const ProfileSkeleton = () => (
-  <div className="w-full p-4 lg:p-6 space-y-6">
+  <div className="w-full space-y-6">
     <div className="flex flex-col lg:flex-row gap-6">
       <div className="w-full lg:w-64 space-y-2">
         {[1, 2, 3].map((i) => (
@@ -339,7 +339,7 @@ const ProfileSkeleton = () => (
 
 // ── 7. Data Panen Skeleton (1:1 Match) ──────────────────────────
 const DataPanenSkeleton = () => (
-  <div className="w-full space-y-6 p-4 lg:p-6">
+  <div className="w-full space-y-6">
     {/* 2 Top Buttons */}
     <div className="flex items-center gap-3">
       <SkeletonWave className="h-10 w-40 rounded-full" />
@@ -400,7 +400,7 @@ const DataPanenSkeleton = () => (
 
 // ── 8. Feedback Skeleton (1:1 Match) ────────────────────────────
 const FeedbackSkeleton = () => (
-  <div className="w-full space-y-6 p-4 lg:p-6">
+  <div className="w-full space-y-6">
     {/* 4 Stat Cards */}
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
       {[1, 2, 3, 4].map((i) => (
@@ -467,7 +467,7 @@ const FeedbackSkeleton = () => (
 
 // ── 9. Chat Skeleton (1:1 Match) ────────────────────────────────
 const ChatSkeleton = () => (
-  <div className="w-full h-[calc(100vh-160px)] min-h-[500px] grid grid-cols-1 lg:grid-cols-3 gap-5 p-4 lg:p-6">
+  <div className="w-full h-[calc(100vh-160px)] min-h-[500px] grid grid-cols-1 lg:grid-cols-3 gap-5">
     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col space-y-4">
       <SkeletonWave className="h-10 w-full rounded-full" />
       <SkeletonWave className="h-8 w-24 rounded-full" />
@@ -546,7 +546,7 @@ export default function AdminTemplate({ children }: { children: React.ReactNode 
     <div className="relative w-full h-full min-h-screen">
       {loading && (
         <div
-          className={`absolute inset-0 z-50 bg-[#f8faf9] transition-opacity duration-300 pointer-events-none ${
+          className={`absolute inset-0 z-50 bg-[#e9faf4] transition-opacity duration-300 pointer-events-none ${
             fadeOut ? "opacity-0" : "opacity-100"
           }`}
         >
