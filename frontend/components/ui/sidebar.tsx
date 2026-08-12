@@ -49,12 +49,14 @@ export default function Sidebar() {
       )}
     >
       {/* Brand Header */}
-      <div className="relative flex items-center justify-center p-4 min-h-[90px] w-full overflow-hidden">
+      <div className="relative min-h-[95px] w-full overflow-hidden flex items-center justify-center py-4">
         {/* Full Logo (Expanded Mode) */}
         <div
           className={cn(
-            "transition-all duration-300 ease-in-out flex items-center justify-center",
-            isOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none absolute"
+            "absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out px-4",
+            isOpen
+              ? "opacity-100 scale-100 pointer-events-auto"
+              : "opacity-0 scale-90 pointer-events-none"
           )}
         >
           <Image
@@ -63,7 +65,7 @@ export default function Sidebar() {
             width={160}
             height={62}
             style={{ width: "auto" }}
-            className="object-contain mt-4 h-24"
+            className="object-contain h-14 mt-2"
             priority
           />
         </div>
@@ -71,16 +73,18 @@ export default function Sidebar() {
         {/* Minimized Logo (Collapsed Mode) */}
         <div
           className={cn(
-            "transition-all duration-300 ease-in-out flex items-center justify-center",
-            !isOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none absolute"
+            "absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out",
+            !isOpen
+              ? "opacity-100 scale-100 pointer-events-auto"
+              : "opacity-0 scale-90 pointer-events-none"
           )}
         >
           <Image
             src="/logo-harvesta-mimized.png"
             alt="Harvesta Icon"
-            width={40}
-            height={40}
-            className="object-contain h-10 w-10 mt-4"
+            width={48}
+            height={48}
+            className="object-contain h-12 w-12 mt-2"
             priority
           />
         </div>
