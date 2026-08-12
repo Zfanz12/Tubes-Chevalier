@@ -53,10 +53,10 @@ export default function Sidebar() {
         {/* Full Logo (Expanded Mode) */}
         <div
           className={cn(
-            "absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out px-4",
+            "absolute inset-0 flex items-center justify-center px-4 transition-all duration-300 ease-in-out",
             isOpen
-              ? "opacity-100 scale-100 pointer-events-auto"
-              : "opacity-0 scale-90 pointer-events-none"
+              ? "opacity-100 scale-100 pointer-events-auto delay-100"
+              : "opacity-0 scale-90 pointer-events-none delay-0"
           )}
         >
           <Image
@@ -65,7 +65,7 @@ export default function Sidebar() {
             width={160}
             height={62}
             style={{ width: "auto" }}
-            className="object-contain h-14 mt-2"
+            className="object-contain h-24 mt-3"
             priority
           />
         </div>
@@ -73,10 +73,10 @@ export default function Sidebar() {
         {/* Minimized Logo (Collapsed Mode) */}
         <div
           className={cn(
-            "absolute inset-0 flex items-center justify-center transition-all duration-500 ease-in-out",
+            "absolute inset-0 flex items-center justify-center transition-all duration-300 ease-in-out",
             !isOpen
-              ? "opacity-100 scale-100 pointer-events-auto"
-              : "opacity-0 scale-90 pointer-events-none"
+              ? "opacity-100 scale-100 pointer-events-auto delay-150"
+              : "opacity-0 scale-75 pointer-events-none delay-0"
           )}
         >
           <Image
@@ -84,7 +84,7 @@ export default function Sidebar() {
             alt="Harvesta Icon"
             width={48}
             height={48}
-            className="object-contain h-12 w-12 mt-2"
+            className="object-contain h-12 w-12 mt-3"
             priority
           />
         </div>
