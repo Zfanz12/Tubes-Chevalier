@@ -1,5 +1,7 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Skeleton Component Switcher ─────────────────────────────────
