@@ -253,17 +253,19 @@ const InsightSkeleton = () => (
     {/* 3 Top Large Cards */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between h-[200px]">
-          <div className="space-y-4">
-            <div className="flex justify-between items-start">
+        <div key={i} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between min-h-[220px]">
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
               <SkeletonWave className="w-8 h-8 rounded-lg shrink-0" />
-              <SkeletonWave className="h-6 w-16 rounded-full" />
+              <SkeletonWave className="h-6 w-20 rounded-full" />
             </div>
-            <SkeletonWave className="h-6 w-40" />
+            <SkeletonWave className="h-6 w-36" />
             <SkeletonWave className="h-4 w-full" />
-            <SkeletonWave className="h-4 w-3/4" />
+            <SkeletonWave className="h-4 w-4/5" />
           </div>
-          <SkeletonWave className="h-8 w-28 rounded-full" />
+          <div className="mt-6">
+            <SkeletonWave className="h-8 w-28 rounded-full" />
+          </div>
         </div>
       ))}
     </div>
@@ -271,10 +273,10 @@ const InsightSkeleton = () => (
     {/* Section Header */}
     <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center gap-4 mt-8">
       <div className="space-y-2 w-full sm:w-auto">
-        <SkeletonWave className="h-6 w-32" />
+        <SkeletonWave className="h-7 w-36" />
         <SkeletonWave className="h-4 w-48" />
       </div>
-      <SkeletonWave className="h-10 w-full sm:w-64 rounded-full" />
+      <SkeletonWave className="h-11 w-full sm:w-64 rounded-full" />
     </div>
 
     {/* Filter Pills */}
@@ -287,18 +289,20 @@ const InsightSkeleton = () => (
     {/* 3 Article Cards */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-[380px] flex flex-col">
+        <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
           {/* Image Placeholder */}
-          <SkeletonWave className="h-[200px] w-full rounded-none" />
+          <SkeletonWave className="h-56 w-full rounded-none" />
           {/* Content */}
-          <div className="p-5 flex-1 space-y-3">
+          <div className="p-6 flex-1 space-y-3 flex flex-col">
+            <SkeletonWave className="h-4 w-24 rounded-full" />
             <SkeletonWave className="h-6 w-full" />
             <SkeletonWave className="h-6 w-3/4" />
-            <div className="space-y-2 pt-2">
-              <SkeletonWave className="h-4 w-full" />
-              <SkeletonWave className="h-4 w-full" />
-              <SkeletonWave className="h-4 w-4/5" />
+            <div className="space-y-2 pt-1 pb-4">
+              <SkeletonWave className="h-3.5 w-full" />
+              <SkeletonWave className="h-3.5 w-full" />
+              <SkeletonWave className="h-3.5 w-4/5" />
             </div>
+            <SkeletonWave className="mt-auto h-4 w-32" />
           </div>
         </div>
       ))}
