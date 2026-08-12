@@ -45,7 +45,7 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        "relative bg-[#1B4332] text-white flex flex-col min-h-screen transition-all duration-300 ease-in-out shrink-0 z-40",
+        "sticky top-0 h-screen bg-[#1B4332] text-white flex flex-col transition-all duration-300 ease-in-out shrink-0 z-40",
         isProfilePage
           ? "-translate-x-full w-0 opacity-0 pointer-events-none border-0 p-0 shadow-none duration-300 overflow-hidden"
           : isOpen
