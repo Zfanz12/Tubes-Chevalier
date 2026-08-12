@@ -49,7 +49,7 @@ export default function Sidebar() {
       )}
     >
       {/* Brand Header */}
-      <div className="relative min-h-[125px] w-full overflow-hidden flex items-center justify-center pt-6 pb-3">
+      <div className="relative min-h-[140px] w-full overflow-hidden flex items-center justify-center pt-6 pb-6">
         {/* Full Logo (Expanded Mode) */}
         <div
           className={cn(
@@ -65,7 +65,7 @@ export default function Sidebar() {
             width={160}
             height={62}
             style={{ width: "auto" }}
-            className="object-contain h-[80px] mt-5 mb-1"
+            className="object-contain h-[80px] mt-4 mb-4"
             priority
           />
         </div>
@@ -84,7 +84,7 @@ export default function Sidebar() {
             alt="Harvesta Icon"
             width={44}
             height={44}
-            className="object-contain h-11 w-11 mt-5 mb-1"
+            className="object-contain h-11 w-11 mt-4 mb-4"
             priority
           />
         </div>
