@@ -2,6 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutGrid,
@@ -87,7 +88,7 @@ export default function Sidebar() {
             (item.href === "/produk" && pathname?.startsWith("/produk"));
 
           const linkContent = (
-            <a
+            <Link
               href={item.href}
               className={cn(
                 "flex items-center rounded-lg transition-all duration-300 ease-in-out text-sm font-medium w-full relative h-12 overflow-hidden",
@@ -129,7 +130,7 @@ export default function Sidebar() {
                   {item.badge}
                 </span>
               )}
-            </a>
+            </Link>
           );
 
           return (
