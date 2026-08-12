@@ -187,18 +187,48 @@ const PesananSkeleton = () => (
 // ── 4. Transaksi Skeleton (1:1 Match) ───────────────────────────
 const TransaksiSkeleton = () => (
   <div className="w-full space-y-6 p-4 lg:p-6">
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+    {/* Top Filter Pills */}
+    <div className="flex gap-2">
+      {[1, 2, 3, 4].map((i) => (
+        <SkeletonWave key={i} className="h-9 w-20 rounded-full shrink-0" />
+      ))}
+    </div>
+
+    {/* 3 Stat Cards */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-3">
-          <SkeletonWave className="h-4 w-32" />
-          <SkeletonWave className="h-8 w-40" />
+        <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 min-h-[140px] flex flex-col justify-between items-center text-center space-y-3">
+          <SkeletonWave className="h-4 w-36" />
+          <SkeletonWave className="h-8 w-24" />
+          <SkeletonWave className="h-4 w-40 rounded-full" />
         </div>
       ))}
     </div>
+
+    {/* Charts Row: Left (Grafik Penjualan 2-col), Right (Metode Pembayaran 1-col) */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex justify-between items-center">
+          <SkeletonWave className="h-6 w-36" />
+          <SkeletonWave className="h-4 w-20" />
+        </div>
+        <SkeletonWave className="h-52 w-full rounded-xl" />
+      </div>
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <SkeletonWave className="h-6 w-40" />
+        <SkeletonWave className="h-52 w-full rounded-xl" />
+      </div>
+    </div>
+
+    {/* Table Card */}
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <SkeletonWave className="h-10 w-full sm:w-72 rounded-full" />
-        <SkeletonWave className="h-10 w-full sm:w-48 rounded-xl" />
+        <div className="flex gap-2">
+          <SkeletonWave className="h-8 w-16 rounded-full" />
+          <SkeletonWave className="h-8 w-16 rounded-full" />
+          <SkeletonWave className="h-8 w-16 rounded-full" />
+        </div>
       </div>
       <div className="space-y-3">
         <SkeletonWave className="h-10 w-full rounded-lg" />
