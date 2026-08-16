@@ -3,33 +3,56 @@ package org.example.project.auth.data.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Serializable
-data class LoginRequestDto(
-    val email: String,
-    val password: String
-)
-
+// MVP: register passwordless -- hanya name + no_hp + role (lihat API_DOCUMENTATION.md
+// bagian "Authentication (OTP WhatsApp)"). Tidak ada email/password/alamat/koordinat lagi.
 @Serializable
 data class RegisterRequestDto(
     val name: String,
-    val email: String,
-    val password: String,
-    @SerialName("password_confirmation") val passwordConfirmation: String
+    @SerialName("no_hp") val noHp: String,
+    val role: String
+)
+
+@Serializable
+data class RegisterResponseDto(
+    val success: Boolean = true,
+    val message: String,
+    val data: RegisteredUserDto? = null
+)
+
+@Serializable
+data class RegisteredUserDto(
+    val id: Long,
+    val name: String,
+    @SerialName("no_hp") val noHp: String,
+    val role: String
+)
+
+@Serializable
+data class SendOtpRequestDto(@SerialName("no_hp") val noHp: String)
+
+@Serializable
+data class SendOtpResponseDto(val success: Boolean = true, val message: String)
+
+@Serializable
+data class LoginRequestDto(
+    @SerialName("no_hp") val noHp: String,
+    @SerialName("otp_code") val otpCode: String
+)
+
+@Serializable
+data class LoginResponseDto(
+    val success: Boolean = true,
+    val message: String,
+    val token: String? = null,
+    val user: UserDto? = null
 )
 
 @Serializable
 data class UserDto(
     val id: Long,
     val name: String,
-    val email: String
-)
-
-@Serializable
-data class AuthResponseDto(
-    val message: String,
-    @SerialName("access_token") val accessToken: String,
-    @SerialName("token_type") val tokenType: String,
-    val user: UserDto
+    @SerialName("no_hp") val noHp: String,
+    val role: String
 )
 
 @Serializable
