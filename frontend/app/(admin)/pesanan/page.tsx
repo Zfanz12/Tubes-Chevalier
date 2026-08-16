@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Hourglass,
   PackageCheck,
@@ -14,6 +14,8 @@ import {
   Package,
   Trash2,
   X,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -27,6 +29,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showToast } from "@/lib/custom-toast";
+import { getTransaksi, formatRupiah, formatTanggal, mapMetodePembayaran, mapStatusPesanan, type ApiTransaksi } from "@/lib/api";
+import { useAuthStore } from "@/lib/useAuthStore";
 
 // US-17: Status pesanan sesuai dokumen MVP
 type OrderStatus = "Menunggu" | "Disiapkan" | "Siap Diambil" | "Sedang Dikirim" | "Selesai";
@@ -79,6 +83,35 @@ const deliveryBadgeClass: Record<string, string> = {
 };
 
 let nextIdCounter = 12352;
+
+// Helper: map ApiTransaksi → OrderItem
+function mapApiToOrder(t: ApiTransaksi): OrderItem {
+  const statusMap: Record<string, OrderStatus> = {
+    pending: "Menunggu",
+    processing: "Disiapkan",
+    shipped: "Sedang Dikirim",
+    completed: "Selesai",
+    cancelled: "Menunggu",
+  };
+  const deliveryMap: Record<string, DeliveryMethod> = {
+    pickup: "Pickup",
+    delivery: "Diantar",
+  };
+  return {
+    id: t.kode_transaksi || `#${t.id}`,
+    customer: t.user?.name ?? t.petani?.nama ?? "Pelanggan",
+    date: t.created_at ? formatTanggal(t.created_at) : "-",
+    total: formatRupiah(t.total_harga ?? 0),
+    status: statusMap[t.status_pesanan] ?? "Menunggu",
+    deliveryMethod: deliveryMap[t.metode_pengiriman] ?? "Pickup",
+    alamat: t.user?.alamat,
+    items: t.items?.map((item) => ({
+      name: item.produk?.nama_barang ?? `Produk #${item.produk_id}`,
+      qty: `${item.jumlah ?? 1} kg`,
+      price: formatRupiah((item.harga_satuan ?? 0) * (item.jumlah ?? 1)),
+    })) ?? [],
+  };
+}
 
 const initialOrders: OrderItem[] = [
   {
@@ -150,7 +183,10 @@ const initialOrders: OrderItem[] = [
 ];
 
 export default function PesananPage() {
-  const [orders, setOrders] = useState<OrderItem[]>(initialOrders);
+  const token = useAuthStore((s) => s.token);
+  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [timeFilter, setTimeFilter] = useState<"Semua" | "7 hari" | "30 hari">("Semua");
   const [statusFilter, setStatusFilter] = useState<"Semua Status" | "Menunggu" | "Disiapkan" | "Dalam Perjalanan" | "Selesai">("Semua Status");
@@ -174,6 +210,33 @@ export default function PesananPage() {
   const [addedItems, setAddedItems] = useState<{ name: string; qty: string; price: string }[]>([]);
 
   const itemsPerPage = 5;
+
+  const fetchOrders = useCallback(async () => {
+    if (!token) {
+      setOrders(initialOrders);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const data = await getTransaksi(token);
+      if (Array.isArray(data) && data.length > 0) {
+        setOrders(data.map(mapApiToOrder));
+      } else {
+        setOrders([]);
+      }
+    } catch {
+      setFetchError("Gagal mengambil data pesanan dari server. Menampilkan data lokal.");
+      setOrders(initialOrders);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((ord) => {
@@ -287,6 +350,27 @@ export default function PesananPage() {
 
   return (
     <div className="w-full space-y-6">
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin text-[#1B4332] mr-3" />
+          <span className="text-sm font-medium text-gray-500">Memuat data pesanan...</span>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {fetchError && !isLoading && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3">
+          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+          <p className="text-xs text-amber-700 font-medium flex-1">{fetchError}</p>
+          <button onClick={fetchOrders} className="text-xs font-bold text-amber-700 hover:underline shrink-0">
+            Coba lagi
+          </button>
+        </div>
+      )}
+
+      {!isLoading && (
+        <>
       {/* ── Stat Cards (Clickable Filter) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Menunggu */}
@@ -1045,6 +1129,8 @@ export default function PesananPage() {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+      </>
       )}
     </div>
   );
