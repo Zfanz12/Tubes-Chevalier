@@ -599,19 +599,19 @@ export default function TransaksiPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 font-medium">ID Pesanan</span>
-                    <span className="font-bold text-gray-900">#TR-KSD234DFGI</span>
+                    <span className="font-bold text-gray-900">{selectedTx.id}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 font-medium">Tanggal Pesanan</span>
-                    <span className="font-bold text-gray-900">Senin, 20 April 2026</span>
+                    <span className="font-bold text-gray-900">{selectedTx.date}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 font-medium">Customer</span>
                     <span className="font-bold text-gray-900">{selectedTx.customer}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400 font-medium">Nomor Telepon</span>
-                    <span className="font-bold text-gray-900">Transfer Virtual Account BCA</span>
+                    <span className="text-gray-400 font-medium">Metode Pembayaran</span>
+                    <span className="font-bold text-gray-900">{selectedTx.method}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 font-medium">Status Pesanan</span>
@@ -622,43 +622,36 @@ export default function TransaksiPage() {
                       {selectedTx.status === "Berhasil" ? "Selesai" : selectedTx.status}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 font-medium">Jenis Pesanan</span>
-                    <span className="font-bold text-gray-900">Online</span>
-                  </div>
                 </div>
               </div>
 
               {/* Section 2: Alamat Pengiriman */}
               <div className="pt-3 border-t border-gray-100 space-y-1.5">
-                <h4 className="font-bold text-gray-900 text-xs">Alamat Pengiriman</h4>
+                <h4 className="font-bold text-gray-900 text-xs">Alamat / Informasi Penerima</h4>
                 <p className="font-bold text-gray-900 text-xs">
-                  {selectedTx.customer} (+62) 851 1234 1234
-                </p>
-                <p className="text-gray-400 text-[11px] leading-relaxed">
-                  Jalan Buah Batu Nomor 128, Kost Buah Batu Kaya, Lantai 2, Kamar 205, Desa Anjing Besar, Kecamatan Lengkong, Kota Bandung, Jawa Barat 40264
+                  {selectedTx.customer}
                 </p>
               </div>
 
-              {/* Section 3: Produk (3 item) */}
+              {/* Section 3: Produk */}
               <div className="pt-3 border-t border-gray-100 space-y-3">
                 <h4 className="font-bold text-gray-900 text-xs">
-                  Produk ({selectedTx.items?.length || 3} item)
+                  Produk ({selectedTx.items?.length || 0} item)
                 </h4>
                 <div className="space-y-3">
-                  {(selectedTx.items || [
-                    { name: "Bayam Organik Asal Jember", qty: "2 kg", price: "Rp25.000" },
-                    { name: "Wortel Penyembah Durian", qty: "2 kg", price: "Rp30.000" },
-                    { name: "Bayam Palsu Asal Ngawi", qty: "1 kg", price: "Rp15.000" },
-                  ]).map((item, idx) => (
-                    <div key={idx} className="space-y-0.5">
-                      <p className="text-gray-400 font-medium text-xs">{item.name}</p>
-                      <div className="flex justify-between items-center text-xs font-bold text-gray-900">
-                        <span>Rp12.500 x {item.qty.replace(/[^\d.]/g, "") || "2"}</span>
-                        <span>{item.price}</span>
+                  {selectedTx.items && selectedTx.items.length > 0 ? (
+                    selectedTx.items.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-xs border-b border-gray-50 pb-2">
+                        <div>
+                          <p className="font-semibold text-gray-800">{item.name}</p>
+                          <p className="text-gray-400 text-[11px]">Jumlah: {item.qty}</p>
+                        </div>
+                        <span className="font-bold text-gray-900">{item.price}</span>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-gray-400 italic">Tidak ada rincian item produk.</p>
+                  )}
                 </div>
               </div>
             </div>

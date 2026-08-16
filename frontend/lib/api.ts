@@ -28,10 +28,11 @@ export async function apiFetch<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  const data = await res.json();
+  const data = await res
+    .json()
+    .catch(() => ({ message: res.statusText || "Terjadi kesalahan pada server" }));
 
   if (!res.ok) {
-    // Lempar error dengan message dari API
     throw data;
   }
 
@@ -52,6 +53,43 @@ export interface ApiProduk {
   updated_at: string;
 }
 
+export interface ApiBukuKas {
+  id: number;
+  user_id: number;
+  transaksi_id?: number | null;
+  tipe: "pemasukan" | "pengeluaran";
+  nominal: number;
+  keterangan: string;
+  tanggal: string;
+  created_at: string;
+}
+
+export interface ApiBukuKasResponse {
+  success: boolean;
+  summary: {
+    total_pemasukan: number;
+    total_pengeluaran: number;
+    saldo: number;
+  };
+  data: ApiBukuKas[];
+}
+
+export interface ApiMarketPrice {
+  id: number;
+  nama_komoditas: string;
+  harga_rata_rata: number;
+  satuan: string;
+  tanggal: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiMarketPriceResponse {
+  success: boolean;
+  message: string;
+  data: ApiMarketPrice[];
+}
+
 export interface ApiTransaksiItem {
   id: number;
   transaksi_id: number;
@@ -65,7 +103,11 @@ export interface ApiUser {
   id: number;
   name: string;
   no_hp: string;
-  role: "petani" | "umkm";
+  role: "petani" | "umkm" | "admin";
+  email?: string;
+  latitude?: number;
+  longitude?: number;
+  alamat?: string;
 }
 
 export interface ApiPetani {
@@ -74,6 +116,7 @@ export interface ApiPetani {
   nama: string;
   rating: number;
   user?: ApiUser;
+  produks?: ApiProduk[];
 }
 
 export interface ApiTransaksi {
@@ -96,8 +139,42 @@ export interface ApiTransaksi {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Produk API helpers (Petani only)
+// Produk API helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Ambil daftar produk dari endpoint GET /petani.
+ * Mengambil produk milik petani (berdasarkan userId) atau seluruh produk.
+ */
+export async function getProdukPetani(
+  token?: string,
+  userId?: number
+): Promise<ApiProduk[]> {
+  try {
+    const petaniList = await apiFetch<any[]>("/petani", { token });
+    if (!Array.isArray(petaniList)) return [];
+
+    if (userId) {
+      const myPetani = petaniList.find(
+        (p) => p.user_id === userId || p.id === userId
+      );
+      if (myPetani && Array.isArray(myPetani.produks) && myPetani.produks.length > 0) {
+        return myPetani.produks;
+      }
+    }
+
+    const allProduks: ApiProduk[] = [];
+    petaniList.forEach((p) => {
+      if (Array.isArray(p.produks)) {
+        allProduks.push(...p.produks);
+      }
+    });
+    return allProduks;
+  } catch (err) {
+    console.error("Gagal mengambil data produk via /petani:", err);
+    throw err;
+  }
+}
 
 export function createProduk(
   token: string,
@@ -121,7 +198,7 @@ export function deleteProduk(
   return apiFetch(`/produk/${id}`, { method: "DELETE", token });
 }
 
-export function getProdukList(token: string): Promise<ApiProduk[]> {
+export function getProdukList(token?: string): Promise<ApiProduk[]> {
   return apiFetch("/produk", { token });
 }
 
@@ -149,29 +226,46 @@ export function getPetaniList(): Promise<ApiPetani[]> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Buku Kas / Data Panen (Catatan Keuangan & Panen)
+// Buku Kas API helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface ApiBukuKas {
-  id: number;
-  petani_id: number;
-  tipe: "pemasukan" | "pengeluaran";
-  jumlah: number;
-  keterangan: string;
-  tanggal: string;
-  created_at: string;
-}
-
-export function getBukuKas(token: string): Promise<ApiBukuKas[]> {
+export function getBukuKas(token: string): Promise<ApiBukuKasResponse> {
   return apiFetch("/buku-kas", { token });
 }
 
 export function createBukuKas(
   token: string,
-  body: { tipe: "pemasukan" | "pengeluaran"; jumlah: number; 
-    keterangan: string; tanggal: string }
-): Promise<{ message: string; data: ApiBukuKas }> {
+  body: { tipe: "pemasukan" | "pengeluaran"; nominal: number; keterangan: string; tanggal: string }
+): Promise<{ success: boolean; message: string; data: ApiBukuKas }> {
   return apiFetch("/buku-kas", { method: "POST", body, token });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Market Prices API helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function getMarketPrices(
+  token: string,
+  params?: { tanggal?: string; nama_komoditas?: string }
+): Promise<ApiMarketPriceResponse> {
+  const query = params
+    ? "?" + new URLSearchParams(params as Record<string, string>).toString()
+    : "";
+  return apiFetch(`/market-prices${query}`, { token });
+}
+
+export function createMarketPrice(
+  token: string,
+  body: { nama_komoditas: string; harga_rata_rata: number; satuan: string; tanggal: string }
+): Promise<{ success: boolean; message: string; data: ApiMarketPrice }> {
+  return apiFetch("/market-prices", { method: "POST", body, token });
+}
+
+export function deleteMarketPrice(
+  token: string,
+  id: number
+): Promise<{ success: boolean; message: string }> {
+  return apiFetch(`/market-prices/${id}`, { method: "DELETE", token });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

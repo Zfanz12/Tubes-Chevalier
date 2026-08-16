@@ -42,6 +42,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 <<<<<<< Updated upstream
 import { showToast } from "@/lib/custom-toast";
+<<<<<<< HEAD
 =======
 <<<<<<< Updated upstream
 import { toast } from "sonner";
@@ -50,6 +51,9 @@ import { createProduk, updateProduk, deleteProduk } from "@/lib/api";
 =======
 import { showToast } from "@/lib/custom-toast";
 >>>>>>> Stashed changes
+=======
+import { createProduk, updateProduk, deleteProduk, getProdukPetani, formatRupiah, type ApiProduk } from "@/lib/api";
+>>>>>>> 5e34fd7b9e9c5ae5a6883c292631ec34ed7c8b7b
 import { useAuthStore } from "@/lib/useAuthStore";
 
 
@@ -127,6 +131,22 @@ const initialProducts: Product[] = [
   },
 ];
 
+// ─── Helper: map ApiProduk → Product ───────────────────────────────────────
+function mapApiProduk(p: ApiProduk): Product {
+  const stok = p.stok ?? 0;
+  const status = stok <= 0 ? "Habis" : stok <= 5 ? "Menipis" : "Tersedia";
+  return {
+    id: p.id,
+    name: p.nama_barang,
+    category: p.nama_barang.split(" ")[0] ?? "Produk",
+    stock: `${stok} kg`,
+    price: formatRupiah(p.harga),
+    unit: "/kg",
+    status,
+    image: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=300&q=80",
+  };
+}
+
 let nextProdukId = 100;
 
 // MVP: 27 SKU komoditas fast-moving yang diizinkan
@@ -200,6 +220,7 @@ export default function ProdukPage() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
 
+<<<<<<< HEAD
   const [products, setProducts] = useState<Product[]>(initialProducts);
 <<<<<<< Updated upstream
 =======
@@ -209,6 +230,11 @@ export default function ProdukPage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
 >>>>>>> Stashed changes
 >>>>>>> Stashed changes
+=======
+  const [products, setProducts] = useState<Product[]>([]);
+  const [produkLoading, setProdukLoading] = useState(true);
+  const [produkError, setProdukError] = useState<string | null>(null);
+>>>>>>> 5e34fd7b9e9c5ae5a6883c292631ec34ed7c8b7b
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -277,6 +303,29 @@ export default function ProdukPage() {
   };
 
   const [formData, setFormData] = useState(defaultFormData);
+
+  // Fetch products from API
+  const fetchProduk = useCallback(async () => {
+    setProdukLoading(true);
+    setProdukError(null);
+    try {
+      const data = await getProdukPetani(token ?? undefined, user?.id);
+      if (Array.isArray(data) && data.length > 0) {
+        setProducts(data.map(mapApiProduk));
+      } else {
+        setProducts(initialProducts);
+      }
+    } catch {
+      setProdukError("Gagal memuat produk dari server. Menampilkan data contoh.");
+      setProducts(initialProducts);
+    } finally {
+      setProdukLoading(false);
+    }
+  }, [token, user?.id]);
+
+  useEffect(() => {
+    fetchProduk();
+  }, [fetchProduk]);
 
   const itemsPerPage = 5;
 
@@ -465,8 +514,8 @@ export default function ProdukPage() {
       return;
     }
 
-    // Trigger Image 2 confirmation dialog
-    setShowAddConfirmModal(true);
+    // Execute add product directly
+    await executeAddProduct();
   };
 
   const executeAddProduct = async () => {
@@ -571,8 +620,8 @@ export default function ProdukPage() {
       return;
     }
 
-    // Trigger Image 5 confirmation dialog
-    setShowEditSubmitConfirmModal(true);
+    // Execute edit product directly
+    await executeEditProduct();
   };
 
   const executeEditProduct = async () => {
@@ -1271,7 +1320,27 @@ export default function ProdukPage() {
   // ── Main Table View for Product List ──
   return (
     <div className="space-y-6 w-full pb-10">
-      {/* Stat Cards */}
+      {/* Loading State */}
+      {produkLoading && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin text-[#1B4332] mr-3" />
+          <span className="text-sm font-medium text-gray-500">Memuat data produk...</span>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {produkError && !produkLoading && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+          <p className="text-xs text-amber-700 font-medium flex-1">{produkError}</p>
+          <button onClick={fetchProduk} className="text-xs font-bold text-amber-700 hover:underline shrink-0">
+            Coba lagi
+          </button>
+        </div>
+      )}
+
+      {!produkLoading && (
+      <>{/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-[#d5ebe1] border border-[#9dc5b5] text-[#1B4332] flex items-center justify-center shrink-0">
@@ -1945,6 +2014,8 @@ export default function ProdukPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+      </>
       )}
     </div>
   );
