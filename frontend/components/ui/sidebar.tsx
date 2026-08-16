@@ -2,6 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutGrid,
@@ -39,28 +40,59 @@ const menuItems = [
 export default function Sidebar() {
   const { isOpen, toggle } = useSidebar();
   const pathname = usePathname();
+  const isProfilePage = pathname === "/profile";
 
   return (
     <aside
       className={cn(
-        "relative bg-[#1B4332] text-white flex flex-col min-h-screen transition-all duration-300 ease-in-out shrink-0 z-40",
-        isOpen ? "w-60" : "w-16"
+        "sticky top-0 h-screen bg-[#1B4332] text-white flex flex-col transition-all duration-300 ease-in-out shrink-0 z-40",
+        isProfilePage
+          ? "-translate-x-full w-0 opacity-0 pointer-events-none border-0 p-0 shadow-none duration-300 overflow-hidden"
+          : isOpen
+          ? "w-60 translate-x-0 opacity-100 duration-300"
+          : "w-16 translate-x-0 opacity-100 duration-300"
       )}
     >
       {/* Brand Header */}
-      <div className="flex items-center justify-center p-4 min-h-[90px] transition-all duration-300 ease-in-out overflow-hidden">
-        <Image
-          src="/logo-harvesta.png"
-          alt="Harvesta Logo"
-          width={160}
-          height={62}
-          style={{ width: "auto" }}
+      <div className="relative min-h-[145px] w-full overflow-hidden flex items-center justify-center pt-6 pb-6">
+        {/* Full Logo (Expanded Mode) */}
+        <div
           className={cn(
-            "object-contain transition-all duration-300 ease-in-out",
-            isOpen ? "mt-4 h-24" : "mt-4 h-10"
+            "absolute inset-0 flex items-center justify-center px-4 transition-all duration-300 ease-in-out",
+            isOpen
+              ? "opacity-100 scale-100 pointer-events-auto"
+              : "opacity-0 scale-90 pointer-events-none"
           )}
-          priority
-        />
+        >
+          <Image
+            src="/logo-harvesta.png"
+            alt="Harvesta Logo"
+            width={160}
+            height={62}
+            style={{ width: "auto" }}
+            className="object-contain h-[100px] mt-10 mb-6"
+            priority
+          />
+        </div>
+
+        {/* Minimized Logo (Collapsed Mode) */}
+        <div
+          className={cn(
+            "absolute inset-0 flex items-center justify-center transition-all duration-300 ease-in-out",
+            !isOpen
+              ? "opacity-100 scale-100 pointer-events-auto"
+              : "opacity-0 scale-90 pointer-events-none"
+          )}
+        >
+          <Image
+            src="/logo-harvesta-mimized.png"
+            alt="Harvesta Icon"
+            width={48}
+            height={48}
+            className="object-contain h-16 w-16 mt-4 mb-4"
+            priority
+          />
+        </div>
       </div>
 
       {/* Collapse / Expand Toggle Button */}
@@ -87,7 +119,7 @@ export default function Sidebar() {
             (item.href === "/produk" && pathname?.startsWith("/produk"));
 
           const linkContent = (
-            <a
+            <Link
               href={item.href}
               className={cn(
                 "flex items-center rounded-lg transition-all duration-300 ease-in-out text-sm font-medium w-full relative h-12 overflow-hidden",
@@ -97,12 +129,27 @@ export default function Sidebar() {
                   : "text-emerald-100/90 hover:bg-[#2d5746] hover:text-white"
               )}
             >
-              <Icon
-                className={cn(
-                  "w-5 h-5 shrink-0 transition-all duration-300",
-                  isActive ? "fill-current" : "fill-none"
+              {/* Icon Container with relative position for collapsed badge */}
+              <div className="relative flex items-center justify-center shrink-0">
+                <Icon
+                  className={cn(
+                    "w-5 h-5 shrink-0 transition-all duration-300",
+                    isActive ? "fill-current" : "fill-none"
+                  )}
+                />
+
+                {/* Collapsed Badge (Overlaid on top-right of Icon to prevent cropping) */}
+                {!isOpen && item.badge && (
+                  <span
+                    className={cn(
+                      "absolute -top-1.5 -right-2 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 shadow-sm z-20 transition-all duration-300",
+                      isActive ? "border-[#658d7c]" : "border-[#1B4332]"
+                    )}
+                  >
+                    {item.badge}
+                  </span>
                 )}
-              />
+              </div>
 
               {/* Text Label with Smooth Opacity & Width Transition */}
               <span
@@ -116,35 +163,16 @@ export default function Sidebar() {
                 {item.name}
               </span>
 
-              {/* Badge with Smooth Fade */}
-              {item.badge && (
-                <span
-                  className={cn(
-                    "bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ease-in-out",
-                    isOpen
-                      ? "w-5 h-5 opacity-100 ml-2"
-                      : "w-4 h-4 opacity-100 absolute -top-1 -right-1 text-[10px]"
-                  )}
-                >
+              {/* Expanded Badge */}
+              {isOpen && item.badge && (
+                <span className="bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0 ml-2 transition-all duration-300 ease-in-out">
                   {item.badge}
                 </span>
               )}
-            </a>
+            </Link>
           );
 
-          return (
-            <Tooltip key={item.name}>
-              <TooltipTrigger render={linkContent} />
-              {!isOpen && (
-                <TooltipContent
-                  side="right"
-                  className="bg-[#1B4332] text-white border-[#06543c]"
-                >
-                  {item.name}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          );
+          return <React.Fragment key={item.name}>{linkContent}</React.Fragment>;
         })}
       </nav>
 

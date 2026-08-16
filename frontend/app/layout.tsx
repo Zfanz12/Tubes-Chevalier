@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -11,6 +12,11 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "Harvesta",
   description: "Aplikasi Manajemen Hasil Tani Harvesta",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
@@ -25,6 +31,7 @@ export default function RootLayout({
     >
       <body className={`${plusJakartaSans.className} min-h-full flex flex-col`}>
         {children}
+        <Toaster />
       </body>
     </html>
   );
