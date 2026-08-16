@@ -8,5 +8,7 @@ data class ProductPreview(
     val price: Double,
     val unit: String = "kg",
     val stock: Double,
-    val distanceKm: Double
+    val distanceKm: Double,
+    val isOrganic: Boolean = false,
+    val rating: Double = 0.0
 )

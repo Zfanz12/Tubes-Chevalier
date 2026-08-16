@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.project.core.theme.AppColors
+import org.example.project.core.util.formatRupiah
 import org.example.project.home.domain.model.ProductPreview
 
 @Composable
@@ -75,7 +76,7 @@ fun ProductCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row {
-                        Text("Rp ${product.price.toInt()}", fontWeight = FontWeight.Bold)
+                        Text(formatRupiah(product.price), fontWeight = FontWeight.Bold)
                         Text("/${product.unit}", style = MaterialTheme.typography.bodySmall)
                     }
                     Box(

@@ -1,6 +1,7 @@
 package org.example.project.home.presentation.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -22,7 +23,8 @@ fun HomeTopBar(
     userName: String,
     location: String,
     onCartClick: () -> Unit = {},
-    onNotificationClick: () -> Unit = {}
+    onNotificationClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
@@ -30,7 +32,14 @@ fun HomeTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(42.dp).clip(CircleShape).background(AppColors.Secondary))
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(AppColors.Secondary)
+                    // BARU -- logo profile di kiri atas kini bisa ditekan untuk membuka ProfileScreen.
+                    .clickable(onClick = onProfileClick)
+            )
             Spacer(Modifier.width(12.dp))
             Column {
                 Text("Hi, $userName", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
@@ -41,7 +50,9 @@ fun HomeTopBar(
             Icon(
                 imageVector = Icons.Default.ShoppingCart,
                 contentDescription = "Keranjang",
-                modifier = Modifier.padding(8.dp),
+                // BARU -- sebelumnya ikon ini tidak bisa ditekan sama sekali (param onCartClick
+                // sudah ada tapi tidak pernah dipakai). Sekarang jadi pintu masuk ke CartScreen.
+                modifier = Modifier.padding(8.dp).clickable(onClick = onCartClick),
                 tint = AppColors.Primary
             )
             Icon(
