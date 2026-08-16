@@ -1,6 +1,5 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+/* @import "tw-animate-css"; didisable dulu lol*/
 
 @custom-variant dark (&:is(.dark *));
 
@@ -127,4 +126,15 @@
   html {
     @apply font-sans;
   }
+}
+
+@keyframes wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(20deg); }
+  75% { transform: rotate(-15deg); }
+}
+
+.animate-wave {
+  transform-origin: 70% 70%;
+  animation: wave 1s infinite ease-in-out;
 }
