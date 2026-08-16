@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { ApiUser } from "./api";
 
 interface User {
   id: number;

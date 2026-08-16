@@ -29,12 +29,29 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { 
+  createProduk, 
+  updateProduk, 
+  deleteProduk, 
+  getProdukList, 
+  formatRupiah,
+  ApiProduk, 
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+<<<<<<< Updated upstream
 import { showToast } from "@/lib/custom-toast";
+=======
+<<<<<<< Updated upstream
+import { toast } from "sonner";
+>>>>>>> Stashed changes
 import { createProduk, updateProduk, deleteProduk } from "@/lib/api";
+=======
+import { showToast } from "@/lib/custom-toast";
+>>>>>>> Stashed changes
 import { useAuthStore } from "@/lib/useAuthStore";
+
 
 interface Product {
   id: number;
@@ -159,13 +176,68 @@ function computeStatusFromStock(stockNum: number): Product["status"] {
   return "Tersedia";
 }
 
+function mapApiToProduct(api: ApiProduk): Product {
+  const stockNum = typeof api.stok === "number" ? api.stok : parseFloat(api.stok) || 0;
+  const priceNum = typeof api.harga === "number" ? api.harga : parseFloat(api.harga) || 0;
+  const matchedCatalog = KOMODITAS_CATALOG.find((k) => k.name.toLowerCase() === api.nama_barang.toLowerCase());
+
+  return {
+    id: api.id,
+    name: api.nama_barang,
+    category: matchedCatalog ? matchedCatalog.category : "Sayuran",
+    stock: `${stockNum} kg`,
+    price: formatRupiah(priceNum),
+    unit: "/kg",
+    status: computeStatusFromStock(stockNum),
+    image:
+  PRESET_IMAGES.find((img) =>
+    api.nama_barang.toLowerCase().includes(img.label.split(" ")[0].toLowerCase())
+  )?.url || PRESET_IMAGES[0].url,
+  };
+}
+
 export default function ProdukPage() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
 
   const [products, setProducts] = useState<Product[]>(initialProducts);
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+  const [isMutating, setIsMutating] = useState(false);
+=======
+  const [isLoadingData, setIsLoadingData] = useState(true);
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // -- Fetch Produk dari Backend --
+  const fetchProduk = useCallback(async () => {
+    if (!token) {
+      setProducts(initialProducts);
+      setIsLoadingData(false);
+      return;
+    }
+
+    try {
+      setIsLoadingData(true);
+      const res = await getProdukList(token);
+      // Assuming res.data contains ApiProduk[]
+      const mapped = (res || []).map(mapApiToProduct);
+      setProducts(mapped);
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      showToast(`Gagal memuat produk dari server: ${error?.message ?? "Error"}`, "error");
+      setProducts(initialProducts); // fallback dummy data if API fails
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchProduk();
+  }, [fetchProduk]);
 
   // View mode: "table" | "add" | "edit"
   const [viewMode, setViewMode] = useState<"table" | "add" | "edit">("table");
@@ -1305,7 +1377,16 @@ export default function ProdukPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
-              {paginatedProducts.length > 0 ? (
+              {isLoadingData ?  (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-gray-500 text-xs font-medium">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="w-6 h-6 animate-spin text-[#1B4332]" />
+                      <span>Memuat data produk...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedProducts.length > 0 ? (
                 paginatedProducts.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50/50 transition">
                     <td className="py-4 pl-2">

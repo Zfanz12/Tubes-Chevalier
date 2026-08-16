@@ -1,4 +1,5 @@
-const API_BASE_URL = "http://127.0.0.1:8000/api";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
 
 type RequestOptions = {
   method?: string;
@@ -120,6 +121,10 @@ export function deleteProduk(
   return apiFetch(`/produk/${id}`, { method: "DELETE", token });
 }
 
+export function getProdukList(token: string): Promise<ApiProduk[]> {
+  return apiFetch("/produk", { token });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Transaksi API helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,6 +146,32 @@ export function getTransaksiDetail(
 
 export function getPetaniList(): Promise<ApiPetani[]> {
   return apiFetch("/petani");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Buku Kas / Data Panen (Catatan Keuangan & Panen)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ApiBukuKas {
+  id: number;
+  petani_id: number;
+  tipe: "pemasukan" | "pengeluaran";
+  jumlah: number;
+  keterangan: string;
+  tanggal: string;
+  created_at: string;
+}
+
+export function getBukuKas(token: string): Promise<ApiBukuKas[]> {
+  return apiFetch("/buku-kas", { token });
+}
+
+export function createBukuKas(
+  token: string,
+  body: { tipe: "pemasukan" | "pengeluaran"; jumlah: number; 
+    keterangan: string; tanggal: string }
+): Promise<{ message: string; data: ApiBukuKas }> {
+  return apiFetch("/buku-kas", { method: "POST", body, token });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
