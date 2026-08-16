@@ -156,18 +156,13 @@ export async function getProdukPetani(
       const myPetani = petaniList.find(
         (p) => p.user_id === userId || p.id === userId
       );
-      if (myPetani && Array.isArray(myPetani.produks) && myPetani.produks.length > 0) {
+      if (myPetani && Array.isArray(myPetani.produks)) {
         return myPetani.produks;
       }
+      return [];
     }
 
-    const allProduks: ApiProduk[] = [];
-    petaniList.forEach((p) => {
-      if (Array.isArray(p.produks)) {
-        allProduks.push(...p.produks);
-      }
-    });
-    return allProduks;
+    return [];
   } catch (err) {
     console.error("Gagal mengambil data produk via /petani:", err);
     throw err;
@@ -196,6 +191,34 @@ export function deleteProduk(
   return apiFetch(`/produk/${id}`, { method: "DELETE", token });
 }
 
+export async function apiFormFetch<T>(
+  endpoint: string,
+  formData: FormData,
+  token?: string
+): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw data;
+  }
+
+  return data as T;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Transaksi API helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,9 +229,62 @@ export function getTransaksi(token: string): Promise<ApiTransaksi[]> {
 
 export function getTransaksiDetail(
   token: string,
-  id: number
+  id: number | string
 ): Promise<ApiTransaksi> {
   return apiFetch(`/transaksi/${id}`, { token });
+}
+
+export function createTransaksi(
+  token: string,
+  body: {
+    petani_id: number;
+    metode_pembayaran: "cod" | "transfer_bank" | "qris";
+    metode_pengiriman: "pickup" | "delivery";
+    items: { produk_id: number; jumlah: number }[];
+  }
+): Promise<{ message: string; data: ApiTransaksi }> {
+  return apiFetch("/transaksi", { method: "POST", body, token });
+}
+
+export function uploadBuktiTransaksi(
+  token: string,
+  id: number | string,
+  file: File
+): Promise<{ message: string; data: ApiTransaksi }> {
+  const formData = new FormData();
+  formData.append("bukti_pembayaran", file);
+  return apiFormFetch(`/transaksi/${id}/bukti`, formData, token);
+}
+
+export function updateStatusTransaksi(
+  token: string,
+  id: number | string,
+  status_pesanan: "preparing" | "shipping" | "completed"
+): Promise<{ message: string; data: ApiTransaksi }> {
+  return apiFetch(`/transaksi/${id}/status`, {
+    method: "POST",
+    body: { status_pesanan },
+    token,
+  });
+}
+
+export function validasiPembayaranTransaksi(
+  token: string,
+  id: number | string
+): Promise<{ message: string; data: ApiTransaksi }> {
+  return apiFetch(`/transaksi/${id}/validasi`, { method: "POST", token });
+}
+
+export function rateTransaksi(
+  token: string,
+  id: number | string,
+  rating: number
+): Promise<{ message: string; data: ApiTransaksi }> {
+  return apiFetch(`/transaksi/${id}/rate`, {
+    method: "POST",
+    body: { rating },
+    token,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

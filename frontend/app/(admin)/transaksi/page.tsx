@@ -542,7 +542,7 @@ export default function TransaksiPage() {
               ) : (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-gray-400 text-xs font-medium">
-                    Tidak ada log transaksi yang ditemukan.
+                    Belum ada log transaksi untuk akun Anda.
                   </td>
                 </tr>
               )}

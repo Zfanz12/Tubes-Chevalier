@@ -224,20 +224,20 @@ export default function ProdukPage() {
 
   const [formData, setFormData] = useState(defaultFormData);
 
-  // Fetch products from API
+  // Fetch products from API (strictly filtered for logged in user)
   const fetchProduk = useCallback(async () => {
     setProdukLoading(true);
     setProdukError(null);
     try {
       const data = await getProdukPetani(token ?? undefined, user?.id);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setProducts(data.map(mapApiProduk));
       } else {
-        setProducts(initialProducts);
+        setProducts([]);
       }
     } catch {
-      setProdukError("Gagal memuat produk dari server. Menampilkan data contoh.");
-      setProducts(initialProducts);
+      setProdukError("Gagal memuat produk milik Anda dari server.");
+      setProducts([]);
     } finally {
       setProdukLoading(false);
     }
@@ -444,61 +444,35 @@ export default function ProdukPage() {
 
     const numericStock = parseFloat(formData.stock) || 0;
     const numericPrice = parseFloat(formData.price.replace(/[^\d]/g, "")) || 0;
-    const finalUnit =
-      formData.unitSelect === "Custom"
-        ? formData.customUnit.trim()
-          ? formData.customUnit.startsWith("/")
-            ? formData.customUnit.trim()
-            : `/${formData.customUnit.trim()}`
-          : "/unit"
-        : formData.unitSelect;
 
-    const computedStatus = computeStatusFromStock(numericStock);
-    const formattedPrice = `Rp ${numericPrice.toLocaleString("id-ID")}`;
-    const unitLabel = finalUnit.replace(/^\//, "");
-
-    nextProdukId++;
-    const tempId = nextProdukId;
-    const newProd: Product = {
-      id: tempId,
-      name: formData.name.trim(),
-      category: formData.category.trim(),
-      stock: `${numericStock} ${unitLabel}`,
-      price: formattedPrice,
-      unit: finalUnit,
-      status: computedStatus,
-      image: formData.image,
-    };
-
-    // Optimistic UI update
-    setProducts((prev) => [newProd, ...prev]);
-
-    // Backend sync if farmer token available
-    if (token && user?.role === "petani") {
-      try {
-        const res = await createProduk(token, {
-          nama_barang: formData.name.trim(),
-          stok: numericStock,
-          harga: numericPrice,
-        });
-        setProducts((prev) =>
-          prev.map((p) => (p.id === tempId ? { ...p, id: res.data.id } : p))
-        );
-        showToast(`Produk "${formData.name}" berhasil disimpan ke server!`, "success");
-      } catch (err: unknown) {
-        const error = err as { message?: string };
-        showToast(`Produk ditambahkan lokal, gagal sinkron server: ${error?.message ?? "Error"}`, "error");
-      }
-    } else {
-      showToast(`Produk "${newProd.name}" berhasil ditambahkan!`, "success");
+    if (!token) {
+      showToast("Gagal menambahkan produk: Sesi autentikasi tidak valid.", "error");
+      setIsSubmitting(false);
+      return;
     }
 
-    setIsSubmitting(false);
-    setIsDirty(false);
-    setFieldErrors({});
-    setTouchedFields({});
-    setViewMode("table");
-    resetForm();
+    try {
+      const res = await createProduk(token, {
+        nama_barang: formData.name.trim(),
+        stok: numericStock,
+        harga: numericPrice,
+      });
+
+      const newProd: Product = mapApiProduk(res.data);
+      setProducts((prev) => [newProd, ...prev]);
+      showToast(res.message || `Produk "${formData.name}" berhasil disimpan!`, "success");
+
+      setIsSubmitting(false);
+      setIsDirty(false);
+      setFieldErrors({});
+      setTouchedFields({});
+      setViewMode("table");
+      resetForm();
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      setIsSubmitting(false);
+      showToast(error?.message ?? "Gagal menyimpan produk ke server", "error");
+    }
   };
 
   const openEditModal = (p: Product) => {
@@ -552,76 +526,53 @@ export default function ProdukPage() {
     const productId = editingProduct.id;
     const numericStock = parseFloat(formData.stock) || 0;
     const numericPrice = parseFloat(formData.price.replace(/[^\d]/g, "")) || 0;
-    const finalUnit =
-      formData.unitSelect === "Custom"
-        ? formData.customUnit.trim()
-          ? formData.customUnit.startsWith("/")
-            ? formData.customUnit.trim()
-            : `/${formData.customUnit.trim()}`
-          : "/unit"
-        : formData.unitSelect;
 
-    const computedStatus = computeStatusFromStock(numericStock);
-    const formattedPrice = `Rp ${numericPrice.toLocaleString("id-ID")}`;
-    const unitLabel = finalUnit.replace(/^\//, "");
-    const finalStatus = formData.statusProduk === "Nonaktif" ? "Habis" : computedStatus;
-
-    setProducts((prev) =>
-      prev.map((item) =>
-        item.id === productId
-          ? {
-              ...item,
-              name: formData.name.trim(),
-              category: formData.category.trim(),
-              stock: `${numericStock} ${unitLabel}`,
-              price: formattedPrice,
-              unit: finalUnit,
-              status: finalStatus,
-              image: formData.image,
-            }
-          : item
-      )
-    );
-    setEditingProduct(null);
-
-    if (token && user?.role === "petani") {
-      try {
-        await updateProduk(token, productId, {
-          nama_barang: formData.name.trim(),
-          stok: numericStock,
-          harga: numericPrice,
-        });
-        showToast(`Produk "${formData.name}" berhasil diperbarui di server!`, "success");
-      } catch (err: unknown) {
-        const error = err as { message?: string };
-        showToast(`Perubahan disimpan lokal, gagal sinkron: ${error?.message ?? "Error"}`, "error");
-      }
-    } else {
-      showToast(`Produk "${formData.name}" berhasil diperbarui!`, "success");
+    if (!token) {
+      showToast("Gagal memperbarui produk: Sesi autentikasi tidak valid.", "error");
+      setIsSubmitting(false);
+      return;
     }
 
-    setIsSubmitting(false);
-    setIsDirty(false);
-    setFieldErrors({});
-    setTouchedFields({});
-    setViewMode("table");
-    resetForm();
+    try {
+      const res = await updateProduk(token, productId, {
+        nama_barang: formData.name.trim(),
+        stok: numericStock,
+        harga: numericPrice,
+      });
+
+      const updatedProd: Product = mapApiProduk(res.data);
+      setProducts((prev) =>
+        prev.map((item) => (item.id === productId ? updatedProd : item))
+      );
+      setEditingProduct(null);
+      showToast(res.message || `Produk "${formData.name}" berhasil diperbarui!`, "success");
+
+      setIsSubmitting(false);
+      setIsDirty(false);
+      setFieldErrors({});
+      setTouchedFields({});
+      setViewMode("table");
+      resetForm();
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      setIsSubmitting(false);
+      showToast(error?.message ?? "Gagal memperbarui produk di server", "error");
+    }
   };
 
   const executeDeleteProduct = async (toDelete: Product) => {
-    setProducts((prev) => prev.filter((p) => p.id !== toDelete.id));
+    if (!token) {
+      showToast("Gagal menghapus produk: Sesi autentikasi tidak valid.", "error");
+      return;
+    }
 
-    if (token && user?.role === "petani") {
-      try {
-        await deleteProduk(token, toDelete.id);
-        showToast(`Produk "${toDelete.name}" berhasil dihapus dari server!`, "success");
-      } catch (err: unknown) {
-        const error = err as { message?: string };
-        setProducts((prev) => [toDelete, ...prev]);
-        showToast(`Gagal menghapus dari server: ${error?.message ?? "Unknown error"}`, "error");
-      }
-    } else {
-      showToast(`Produk "${toDelete.name}" berhasil dihapus`, "success");
+    try {
+      const res = await deleteProduk(token, toDelete.id);
+      setProducts((prev) => prev.filter((p) => p.id !== toDelete.id));
+      showToast(res.message || `Produk "${toDelete.name}" berhasil dihapus!`, "success");
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      showToast(error?.message ?? "Gagal menghapus produk di server", "error");
     }
   };
 
@@ -1240,16 +1191,8 @@ export default function ProdukPage() {
   // ── Main Table View for Product List ──
   return (
     <div className="space-y-6 w-full pb-10">
-      {/* Loading State */}
-      {produkLoading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-[#1B4332] mr-3" />
-          <span className="text-sm font-medium text-gray-500">Memuat data produk...</span>
-        </div>
-      )}
-
       {/* Error Banner */}
-      {produkError && !produkLoading && (
+      {produkError && (
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3">
           <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
           <p className="text-xs text-amber-700 font-medium flex-1">{produkError}</p>
@@ -1259,8 +1202,7 @@ export default function ProdukPage() {
         </div>
       )}
 
-      {!produkLoading && (
-      <>{/* Stat Cards */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-[#d5ebe1] border border-[#9dc5b5] text-[#1B4332] flex items-center justify-center shrink-0">
@@ -1450,7 +1392,7 @@ export default function ProdukPage() {
               ) : (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-gray-400 text-xs font-medium">
-                    Tidak ada produk yang sesuai dengan pencarian.
+                    Belum ada produk yang terdaftar untuk akun Anda. Klik tombol "Tambah Produk Baru" untuk mulai menambahkan.
                   </td>
                 </tr>
               )}
@@ -1925,8 +1867,6 @@ export default function ProdukPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      )}
-      </>
       )}
     </div>
   );

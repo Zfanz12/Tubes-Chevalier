@@ -29,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showToast } from "@/lib/custom-toast";
-import { getTransaksi, formatRupiah, formatTanggal, mapMetodePembayaran, mapStatusPesanan, type ApiTransaksi } from "@/lib/api";
+import { getTransaksi, createTransaksi, updateStatusTransaksi, validasiPembayaranTransaksi, getProdukPetani, formatRupiah, formatTanggal, mapMetodePembayaran, mapStatusPesanan, type ApiTransaksi, type ApiProduk } from "@/lib/api";
 import { useAuthStore } from "@/lib/useAuthStore";
 
 // US-17: Status pesanan sesuai dokumen MVP
@@ -40,6 +40,7 @@ type DeliveryMethod = "Pickup" | "Diantar";
 
 interface OrderItem {
   id: string;
+  rawId?: number;
   customer: string;
   date: string;
   total: string;
@@ -99,6 +100,7 @@ function mapApiToOrder(t: ApiTransaksi): OrderItem {
   };
   return {
     id: t.kode_transaksi || `#${t.id}`,
+    rawId: t.id,
     customer: t.user?.name ?? t.petani?.nama ?? "Pelanggan",
     date: t.created_at ? formatTanggal(t.created_at) : "-",
     total: formatRupiah(t.total_harga ?? 0),
@@ -213,7 +215,7 @@ export default function PesananPage() {
 
   const fetchOrders = useCallback(async () => {
     if (!token) {
-      setOrders(initialOrders);
+      setOrders([]);
       setIsLoading(false);
       return;
     }
@@ -227,11 +229,19 @@ export default function PesananPage() {
         setOrders([]);
       }
     } catch {
-      setFetchError("Gagal mengambil data pesanan dari server. Menampilkan data lokal.");
-      setOrders(initialOrders);
+      setFetchError("Gagal mengambil data pesanan dari server.");
+      setOrders([]);
     } finally {
       setIsLoading(false);
     }
+  }, [token]);
+
+  const [availableProduks, setAvailableProduks] = useState<ApiProduk[]>([]);
+
+  useEffect(() => {
+    getProdukPetani(token ?? undefined).then((data) => {
+      if (Array.isArray(data)) setAvailableProduks(data);
+    }).catch(() => {});
   }, [token]);
 
   useEffect(() => {
@@ -279,17 +289,33 @@ export default function PesananPage() {
   const countInTransit = orders.filter((o) => o.status === "Sedang Dikirim" || o.status === "Siap Diambil").length;
   const countSelesai = orders.filter((o) => o.status === "Selesai").length;
 
-  const updateOrderStatus = (id: string, newStatus: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
-    );
-    setSelectedOrder((prev) => {
-      if (prev && prev.id === id) {
-        return { ...prev, status: newStatus };
+  const updateOrderStatus = async (id: string, newStatus: OrderStatus, rawId?: number) => {
+    if (!token || !rawId) {
+      showToast("Gagal memperbarui status: Sesi autentikasi tidak valid atau ID pesanan tidak ditemukan.", "error");
+      return;
+    }
+
+    try {
+      let res: { message: string };
+      if (newStatus === "Selesai") {
+        res = await validasiPembayaranTransaksi(token, rawId);
+      } else {
+        let backendStatus: "preparing" | "shipping" | "completed" = "preparing";
+        if (newStatus === "Disiapkan") backendStatus = "preparing";
+        else if (newStatus === "Sedang Dikirim" || newStatus === "Siap Diambil") backendStatus = "shipping";
+
+        res = await updateStatusTransaksi(token, rawId, backendStatus);
       }
-      return prev;
-    });
-    showToast(`Status pesanan ${id} diperbarui menjadi "${newStatus}"`, "success");
+
+      setOrders((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+      );
+      setSelectedOrder((prev) => (prev && prev.id === id ? { ...prev, status: newStatus } : prev));
+      showToast(res.message || `Status pesanan ${id} berhasil diperbarui!`, "success");
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      showToast(error?.message ?? "Gagal memperbarui status pesanan di server", "error");
+    }
   };
 
   const handleAddItemToOrder = () => {
@@ -313,53 +339,54 @@ export default function PesananPage() {
     showToast("Item dihapus dari rincian pesanan", "success");
   };
 
-  const handleAddOrderSubmit = (e: React.FormEvent) => {
+  const handleAddOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (addedItems.length === 0) {
       showToast("Tambahkan minimal 1 produk ke rincian pesanan!", "error");
       return;
     }
 
-    const calculatedTotalNum = addedItems.reduce((acc, item) => {
-      const p = parseFloat(item.price.replace(/[^\d]/g, "")) || 0;
-      return acc + p;
-    }, 0);
+    if (!token) {
+      showToast("Gagal membuat pesanan: Anda harus login terlebih dahulu.", "error");
+      return;
+    }
 
-    const formattedTotal = `Rp ${calculatedTotalNum.toLocaleString("id-ID")}`;
-    const customerName = newOrderCustomer.trim() || "Customer Umum";
+    try {
+      const backendItems = addedItems.map((item) => {
+        const matchProd = availableProduks.find((p) => p.nama_barang === item.name);
+        const qty = parseFloat(item.qty.replace(/[^\d.]/g, "")) || 1;
+        return {
+          produk_id: matchProd ? matchProd.id : (availableProduks[0]?.id || 1),
+          jumlah: qty,
+        };
+      });
 
-    nextIdCounter++;
-    const order: OrderItem = {
-      id: `INV-${nextIdCounter}`,
-      customer: customerName,
-      date: new Date().toLocaleDateString("id-ID"),
-      total: formattedTotal,
-      status: "Menunggu",
-      deliveryMethod: newOrderDeliveryMethod,
-      alamat: newOrderDeliveryMethod === "Diantar" ? newOrderAlamat.trim() : undefined,
-      items: addedItems,
-    };
+      const petaniId = availableProduks.length > 0 ? availableProduks[0].petani_id : 1;
+      const res = await createTransaksi(token, {
+        petani_id: petaniId,
+        metode_pembayaran: "transfer_bank",
+        metode_pengiriman: newOrderDeliveryMethod === "Pickup" ? "pickup" : "delivery",
+        items: backendItems,
+      });
 
-    setOrders([order, ...orders]);
-    setIsAddOpen(false);
-    setNewOrderCustomer("");
-    setNewOrderAlamat("");
-    setAddedItems([]);
-    showToast(`Pesanan ${order.id} berhasil dicatat!`, "success");
+      if (res.data) {
+        showToast(res.message || "Pesanan berhasil dibuat!", "success");
+        await fetchOrders();
+        setIsAddOpen(false);
+        setNewOrderCustomer("");
+        setNewOrderAlamat("");
+        setAddedItems([]);
+      }
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      showToast(error?.message ?? "Gagal membuat pesanan di server", "error");
+    }
   };
 
   return (
     <div className="w-full space-y-6">
-      {/* Loading State */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-[#1B4332] mr-3" />
-          <span className="text-sm font-medium text-gray-500">Memuat data pesanan...</span>
-        </div>
-      )}
-
       {/* Error Banner */}
-      {fetchError && !isLoading && (
+      {fetchError && (
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3">
           <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
           <p className="text-xs text-amber-700 font-medium flex-1">{fetchError}</p>
@@ -369,8 +396,6 @@ export default function PesananPage() {
         </div>
       )}
 
-      {!isLoading && (
-        <>
       {/* ── Stat Cards (Clickable Filter) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Menunggu */}
@@ -627,7 +652,7 @@ export default function PesananPage() {
               ) : (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-gray-400 text-xs font-medium">
-                    Tidak ada pesanan yang sesuai dengan filter.
+                    Belum ada data pesanan yang masuk untuk akun Anda.
                   </td>
                 </tr>
               )}
@@ -987,7 +1012,7 @@ export default function PesananPage() {
               </Button>
               <Button
                 onClick={() => {
-                  updateOrderStatus(confirmTerimaOrder.id, "Disiapkan");
+                  updateOrderStatus(confirmTerimaOrder.id, "Disiapkan", confirmTerimaOrder.rawId);
                   setConfirmTerimaOrder(null);
                 }}
                 className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white font-semibold text-xs rounded-xl shadow-xs"
@@ -1082,7 +1107,7 @@ export default function PesananPage() {
               <Button
                 onClick={() => {
                   const targetStatus: OrderStatus = confirmKirimOrder.deliveryMethod === "Pickup" ? "Siap Diambil" : "Sedang Dikirim";
-                  updateOrderStatus(confirmKirimOrder.id, targetStatus);
+                  updateOrderStatus(confirmKirimOrder.id, targetStatus, confirmKirimOrder.rawId);
                   setConfirmKirimOrder(null);
                 }}
                 className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white font-semibold text-xs rounded-xl shadow-xs"
@@ -1119,7 +1144,7 @@ export default function PesananPage() {
               </Button>
               <Button
                 onClick={() => {
-                  updateOrderStatus(confirmSelesaiOrder.id, "Selesai");
+                  updateOrderStatus(confirmSelesaiOrder.id, "Selesai", confirmSelesaiOrder.rawId);
                   setConfirmSelesaiOrder(null);
                 }}
                 className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white font-semibold text-xs rounded-xl shadow-xs"
@@ -1129,8 +1154,6 @@ export default function PesananPage() {
             </div>
           </DialogContent>
         </Dialog>
-      )}
-      </>
       )}
     </div>
   );

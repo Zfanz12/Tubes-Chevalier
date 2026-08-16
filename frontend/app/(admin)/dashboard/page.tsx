@@ -245,7 +245,7 @@ export default function DashboardPage() {
 
   const fetchRecentTx = useCallback(async () => {
     if (!token) {
-      setRecentTransactions(MOCK_TRANSACTIONS);
+      setRecentTransactions([]);
       setTxLoading(false);
       return;
     }
@@ -254,10 +254,10 @@ export default function DashboardPage() {
       if (Array.isArray(data) && data.length > 0) {
         setRecentTransactions(data.slice(0, 4).map(mapToDashboardTx));
       } else {
-        setRecentTransactions(MOCK_TRANSACTIONS);
+        setRecentTransactions([]);
       }
     } catch {
-      setRecentTransactions(MOCK_TRANSACTIONS);
+      setRecentTransactions([]);
     } finally {
       setTxLoading(false);
     }
