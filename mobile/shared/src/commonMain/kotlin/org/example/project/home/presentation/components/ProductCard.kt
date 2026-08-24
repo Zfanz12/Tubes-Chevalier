@@ -29,12 +29,19 @@ import org.example.project.home.domain.model.ProductPreview
 fun ProductCard(
     product: ProductPreview,
     onAddToCart: (ProductPreview) -> Unit = {},
-    onToggleFavorite: (ProductPreview) -> Unit = {}
+    onToggleFavorite: (ProductPreview) -> Unit = {},
+    onClick: (ProductPreview) -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppColors.White),
-        modifier = Modifier.fillMaxWidth()
+        colors = CardDefaults.cardColors(
+            containerColor = AppColors.White
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                onClick(product)
+            }
     ) {
         Row(modifier = Modifier.padding(17.dp)) {
             // TODO: ganti dengan AsyncImage saat imageUrl dari API sudah ada

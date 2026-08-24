@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.project.core.theme.AppColors
 
@@ -26,41 +25,152 @@ fun HomeTopBar(
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
+
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = 24.dp,
+                vertical = 12.dp
+            ),
+
+        horizontalArrangement =
+            Arrangement.SpaceBetween,
+
+        verticalAlignment =
+            Alignment.CenterVertically
+
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+
+        /*
+         * PROFILE
+         */
+
+        Row(
+            verticalAlignment =
+                Alignment.CenterVertically
+        ) {
+
             Box(
+
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(AppColors.Secondary)
-                    // BARU -- logo profile di kiri atas kini bisa ditekan untuk membuka ProfileScreen.
-                    .clickable(onClick = onProfileClick)
-            )
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text("Hi, $userName", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Text(location, style = MaterialTheme.typography.bodySmall, color = AppColors.Subtitle)
+                    .background(
+                        AppColors.Secondary
+                    )
+                    .clickable(
+                        onClick = onProfileClick
+                    ),
+
+                contentAlignment =
+                    Alignment.Center
+
+            ) {
+
+                Text(
+                    text =
+                        userName
+                            .firstOrNull()
+                            ?.uppercase()
+                            ?: "H",
+
+                    color =
+                        AppColors.White,
+
+                    fontWeight =
+                        androidx.compose.ui.text.font.FontWeight.Bold
+                )
+
             }
+
+
+            Spacer(
+                Modifier.width(12.dp)
+            )
+
+
+            Column {
+
+                Text(
+
+                    text = "Hi, $userName",
+
+                    style =
+                        MaterialTheme.typography.titleSmall,
+
+                    fontWeight =
+                        androidx.compose.ui.text.font.FontWeight.SemiBold
+
+                )
+
+
+                Text(
+
+                    text = location,
+
+                    style =
+                        MaterialTheme.typography.bodySmall,
+
+                    color =
+                        AppColors.Subtitle
+
+                )
+
+            }
+
         }
+
+
+        /*
+         * ACTIONS
+         */
+
         Row {
+
             Icon(
-                imageVector = Icons.Default.ShoppingCart,
-                contentDescription = "Keranjang",
-                // BARU -- sebelumnya ikon ini tidak bisa ditekan sama sekali (param onCartClick
-                // sudah ada tapi tidak pernah dipakai). Sekarang jadi pintu masuk ke CartScreen.
-                modifier = Modifier.padding(8.dp).clickable(onClick = onCartClick),
-                tint = AppColors.Primary
+
+                imageVector =
+                    Icons.Default.ShoppingCart,
+
+                contentDescription =
+                    "Keranjang",
+
+                tint =
+                    AppColors.Primary,
+
+                modifier = Modifier
+                    .size(42.dp)
+                    .padding(9.dp)
+                    .clickable(
+                        onClick = onCartClick
+                    )
+
             )
+
+
             Icon(
-                imageVector = Icons.Default.Notifications,
-                contentDescription = "Notifikasi",
-                modifier = Modifier.padding(8.dp),
-                tint = AppColors.Primary
+
+                imageVector =
+                    Icons.Default.Notifications,
+
+                contentDescription =
+                    "Notifikasi",
+
+                tint =
+                    AppColors.Primary,
+
+                modifier = Modifier
+                    .size(42.dp)
+                    .padding(9.dp)
+                    .clickable(
+                        onClick = onNotificationClick
+                    )
+
             )
+
         }
+
     }
 }
