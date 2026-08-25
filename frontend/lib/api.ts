@@ -47,6 +47,7 @@ export interface ApiProduk {
   nama_barang: string;
   stok: number;
   harga: number;
+  gambar: string | null; // path/URL gambar produk, null jika belum ada
   created_at: string;
   updated_at: string;
 }
@@ -63,13 +64,13 @@ export interface ApiBukuKas {
 }
 
 export interface ApiBukuKasResponse {
-  success: boolean;
   summary: {
     total_pemasukan: number;
     total_pengeluaran: number;
     saldo: number;
   };
-  data: ApiBukuKas[];
+  records: ApiBukuKas[];
+  data?: ApiBukuKas[];
 }
 
 export interface ApiMarketPrice {
@@ -110,9 +111,17 @@ export interface ApiUser {
 
 export interface ApiPetani {
   id: number;
-  user_id: number;
+  user_id?: number;
   nama: string;
   rating: number;
+  rekening?: string | null;
+  qris_image?: string | null;
+  komoditas?: string;
+  stok?: number;
+  harga?: number;
+  radius?: string | null;
+  distance_val?: number | null;
+  logistik?: string | null;
   user?: ApiUser;
   produks?: ApiProduk[];
 }
@@ -146,23 +155,38 @@ export interface ApiTransaksi {
  */
 export async function getProdukPetani(
   token?: string,
-  userId?: number
+  userId?: number,
+  userName?: string
 ): Promise<ApiProduk[]> {
   try {
     const petaniList = await apiFetch<any[]>("/petani", { token });
-    if (!Array.isArray(petaniList)) return [];
+    if (!Array.isArray(petaniList) || petaniList.length === 0) return [];
 
-    if (userId) {
-      const myPetani = petaniList.find(
-        (p) => p.user_id === userId || p.id === userId
-      );
+    // 1. Try matching specific farmer by user_id, id, or nama
+    if (userId || userName) {
+      const myPetani = petaniList.find((p) => {
+        const matchesUserId = p.user_id !== undefined && Number(p.user_id) === Number(userId);
+        const matchesId = p.id !== undefined && Number(p.id) === Number(userId);
+        const matchesName =
+          userName &&
+          p.nama &&
+          p.nama.toLowerCase().trim() === userName.toLowerCase().trim();
+        return matchesUserId || matchesId || matchesName;
+      });
+
       if (myPetani && Array.isArray(myPetani.produks)) {
         return myPetani.produks;
       }
-      return [];
     }
 
-    return [];
+    // 2. Fallback: If only 1 farmer profile exists, return its produks
+    if (petaniList.length === 1 && Array.isArray(petaniList[0].produks)) {
+      return petaniList[0].produks;
+    }
+
+    // 3. Fallback: Aggregate all produks across farmers
+    const allProduks = petaniList.flatMap((p) => (Array.isArray(p.produks) ? p.produks : []));
+    return allProduks;
   } catch (err) {
     console.error("Gagal mengambil data produk via /petani:", err);
     throw err;
@@ -171,8 +195,18 @@ export async function getProdukPetani(
 
 export function createProduk(
   token: string,
-  body: { nama_barang: string; stok: number; harga: number }
+  body: { nama_barang: string; stok: number; harga: number },
+  gambarFile?: File
 ): Promise<{ message: string; data: ApiProduk }> {
+  // Jika ada file gambar, kirim sebagai multipart/form-data
+  if (gambarFile) {
+    const formData = new FormData();
+    formData.append("nama_barang", body.nama_barang);
+    formData.append("stok", String(body.stok));
+    formData.append("harga", String(body.harga));
+    formData.append("gambar", gambarFile);
+    return apiFormFetch("/produk", formData, token);
+  }
   return apiFetch("/produk", { method: "POST", body, token });
 }
 
@@ -182,6 +216,21 @@ export function updateProduk(
   body: Partial<{ nama_barang: string; stok: number; harga: number }>
 ): Promise<{ message: string; data: ApiProduk }> {
   return apiFetch(`/produk/${id}`, { method: "PUT", body, token });
+}
+
+/**
+ * Upload atau ganti gambar produk yang sudah ada.
+ * Gunakan endpoint terpisah (POST /produk/{id}/gambar) karena
+ * PHP tidak mendukung PUT multipart/form-data secara native.
+ */
+export function uploadGambarProduk(
+  token: string,
+  id: number,
+  gambarFile: File
+): Promise<{ message: string; data: ApiProduk }> {
+  const formData = new FormData();
+  formData.append("gambar", gambarFile);
+  return apiFormFetch(`/produk/${id}/gambar`, formData, token);
 }
 
 export function deleteProduk(
@@ -237,7 +286,7 @@ export function getTransaksiDetail(
 export function createTransaksi(
   token: string,
   body: {
-    petani_id: number;
+    petani_id?: number; // opsional: tidak diperlukan jika user adalah petani (auto-resolve di backend)
     metode_pembayaran: "cod" | "transfer_bank" | "qris";
     metode_pengiriman: "pickup" | "delivery";
     items: { produk_id: number; jumlah: number }[];
@@ -299,8 +348,14 @@ export function getPetaniList(): Promise<ApiPetani[]> {
 // Buku Kas API helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function getBukuKas(token: string): Promise<ApiBukuKasResponse> {
-  return apiFetch("/buku-kas", { token });
+export async function getBukuKas(token: string): Promise<ApiBukuKasResponse> {
+  const res = await apiFetch<any>("/buku-kas", { token });
+  const recs = Array.isArray(res.records) ? res.records : Array.isArray(res.data) ? res.data : [];
+  return {
+    summary: res.summary ?? { total_pemasukan: 0, total_pengeluaran: 0, saldo: 0 },
+    records: recs,
+    data: recs,
+  };
 }
 
 export function createBukuKas(
