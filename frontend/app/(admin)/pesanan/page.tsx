@@ -245,14 +245,25 @@ export default function PesananPage() {
   }, [token]);
 
   const [availableProduks, setAvailableProduks] = useState<ApiProduk[]>([]);
+  const [produkLoading, setProdukLoading] = useState(true);
 
   useEffect(() => {
-    getProdukPetani(token ?? undefined, user?.id, user?.name).then((data) => {
-      if (Array.isArray(data) && data.length > 0) {
-        setAvailableProduks(data);
-        setSelectedCatalogItem(data[0].nama_barang);
-      }
-    }).catch(() => {});
+    setProdukLoading(true);
+    getProdukPetani(token ?? undefined, user?.id, user?.name)
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setAvailableProduks(data);
+          setSelectedCatalogItem(data[0].nama_barang);
+        } else {
+          setAvailableProduks([]);
+        }
+      })
+      .catch(() => {
+        setAvailableProduks([]);
+      })
+      .finally(() => {
+        setProdukLoading(false);
+      });
   }, [token, user?.id, user?.name]);
 
   useEffect(() => {
@@ -874,36 +885,43 @@ export default function PesananPage() {
               </div>
             )}
 
-            {/* Dynamic Product Selection */}
+            {/* Dynamic Product Selection — real data from /petani */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
                 <Label className="text-gray-700 font-semibold">Nama Produk Sayuran / Buah</Label>
                 <span className="text-[11px] font-semibold text-red-500">Wajib</span>
               </div>
-              <select
-                value={selectedCatalogItem}
-                onChange={(e) => setSelectedCatalogItem(e.target.value)}
-                className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
-              >
-                {availableProduks.length > 0 ? (
-                  availableProduks.map((p) => (
+
+              {produkLoading ? (
+                /* Loading skeleton */
+                <div className="h-10 w-full rounded-xl border border-gray-200 bg-gray-100 animate-pulse flex items-center px-4">
+                  <span className="text-xs text-gray-400">Memuat produk Anda...</span>
+                </div>
+              ) : availableProduks.length === 0 ? (
+                /* Empty state — petani belum punya produk */
+                <div className="h-10 w-full rounded-xl border border-dashed border-amber-300 bg-amber-50 flex items-center justify-between px-4">
+                  <span className="text-xs text-amber-700 font-medium">Belum ada produk terdaftar</span>
+                  <a
+                    href="/produk"
+                    className="text-[11px] font-bold text-[#1B4332] hover:underline shrink-0"
+                  >
+                    + Tambah Produk
+                  </a>
+                </div>
+              ) : (
+                /* Dropdown berisi produk milik petani yang login */
+                <select
+                  value={selectedCatalogItem}
+                  onChange={(e) => setSelectedCatalogItem(e.target.value)}
+                  className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
+                >
+                  {availableProduks.map((p) => (
                     <option key={p.id} value={p.nama_barang}>
                       {p.nama_barang} — {formatRupiah(p.harga)}/kg (Stok: {p.stok} kg)
                     </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="Bayam Hijau Segar">Bayam Hijau Segar — Rp 12.500/kg</option>
-                    <option value="Tomat Merah Super">Tomat Merah Super — Rp 11.500/kg</option>
-                    <option value="Wortel Manis Lokal">Wortel Manis Lokal — Rp 10.000/kg</option>
-                    <option value="Kangkung Segar Hydro">Kangkung Segar Hydro — Rp 8.000/kg</option>
-                    <option value="Sawi Hijau Organik">Sawi Hijau Organik — Rp 9.000/kg</option>
-                    <option value="Cabai Rawit Merah">Cabai Rawit Merah — Rp 35.000/kg</option>
-                    <option value="Brokoli Hijau Organik">Brokoli Hijau Organik — Rp 18.500/kg</option>
-                    <option value="Pak Choy Hijau">Pak Choy Hijau — Rp 12.000/kg</option>
-                  </>
-                )}
-              </select>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="flex items-center justify-between gap-4">
@@ -928,7 +946,8 @@ export default function PesananPage() {
               <button
                 type="button"
                 onClick={handleAddItemToOrder}
-                className="mt-5 h-10 px-4 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl font-semibold text-xs transition flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
+                disabled={produkLoading || availableProduks.length === 0}
+                className="mt-5 h-10 px-4 bg-[#1B4332] hover:bg-[#032e21] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-xs transition flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Tambah Produk

@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showToast } from "@/lib/custom-toast";
-import { createProduk, updateProduk, deleteProduk, uploadGambarProduk, getProdukPetani, formatRupiah, type ApiProduk } from "@/lib/api";
+import { createProduk, updateProduk, deleteProduk, uploadGambarProduk, getProdukPetani, formatRupiah, BACKEND_URL, type ApiProduk } from "@/lib/api";
 import { useAuthStore } from "@/lib/useAuthStore";
 
 interface Product {
@@ -111,11 +111,10 @@ const initialProducts: Product[] = [
 ];
 
 // ─── Helper: map ApiProduk → Product ───────────────────────────────────────
-const BACKEND_URL = "http://127.0.0.1:8000";
-
 function mapApiProduk(p: ApiProduk): Product {
-  const stok = p.stok ?? 0;
-  const status = stok <= 0 ? "Habis" : stok <= 5 ? "Menipis" : "Tersedia";
+  const numStok = typeof p.stok === "number" ? p.stok : parseFloat(String(p.stok)) || 0;
+  const status = numStok <= 0 ? "Habis" : numStok <= 5 ? "Menipis" : "Tersedia";
+  const stokFormatted = Number.isInteger(numStok) ? numStok.toString() : numStok.toFixed(2).replace(/\.?0+$/, "");
   // Jika gambar dari backend adalah path relatif (/storage/...), prefix dengan backend URL
   let imageUrl = "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=300&q=80";
   if (p.gambar) {
@@ -125,12 +124,134 @@ function mapApiProduk(p: ApiProduk): Product {
     id: p.id,
     name: p.nama_barang,
     category: p.nama_barang.split(" ")[0] ?? "Produk",
-    stock: `${stok} kg`,
+    stock: `${stokFormatted} kg`,
     price: formatRupiah(p.harga),
     unit: "/kg",
     status,
     image: imageUrl,
   };
+}
+
+// ─── Helper: Konversi base64 / URL ke File & Kompresi gambar ────────────────
+function dataURLtoFile(dataurl: string, filename: string): File {
+  const arr = dataurl.split(",");
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+}
+
+async function convertUrlToFile(url: string, filename = "produk.jpg"): Promise<File | null> {
+  if (!url || typeof url !== "string") return null;
+
+  // Case 1: Data URL (Base64)
+  if (url.startsWith("data:")) {
+    try {
+      return dataURLtoFile(url, filename);
+    } catch (e) {
+      console.warn("Gagal konversi base64 ke file:", e);
+      return null;
+    }
+  }
+
+  // Case 2: Standard URL via fetch
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const blob = await res.blob();
+    const mime = blob.type && blob.type.startsWith("image/") ? blob.type : "image/jpeg";
+    const ext = mime.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+    const cleanFilename = filename.includes(".") ? filename : `${filename}.${ext}`;
+    return new File([blob], cleanFilename, { type: mime });
+  } catch {
+    // Fallback via Image element & Canvas jika CORS fetch diblokir
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = url;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = (e) => reject(e);
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || 400;
+      canvas.height = img.naturalHeight || 400;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(img, 0, 0);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.85)
+      );
+      if (!blob) return null;
+      return new File([blob], filename.endsWith(".jpg") ? filename : `${filename}.jpg`, {
+        type: "image/jpeg",
+      });
+    } catch (canvasErr) {
+      console.warn("Gagal konversi URL gambar ke File:", canvasErr);
+      return null;
+    }
+  }
+}
+
+async function compressImageFile(file: File, maxSizeBytes = 1.9 * 1024 * 1024): Promise<File> {
+  if (file.size <= maxSizeBytes) {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      const maxDim = 1200;
+      let width = img.naturalWidth;
+      let height = img.naturalHeight;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const compressedFile = new File(
+            [blob],
+            file.name.replace(/\.[^/.]+$/, "") + ".jpg",
+            { type: "image/jpeg" }
+          );
+          resolve(compressedFile);
+        },
+        "image/jpeg",
+        0.82
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
 }
 
 let nextProdukId = 100;
@@ -303,9 +424,7 @@ export default function ProdukPage() {
           return "";
 
         case "deskripsi":
-          if (!value || !value.trim()) return "Deskripsi produk wajib diisi.";
-          if (value.trim().length < 10) return "Deskripsi terlalu pendek (minimal 10 karakter).";
-          if (value.length > 500) return "Deskripsi terlalu panjang (maksimal 500 karakter).";
+          // Deskripsi di-generate otomatis dari nama produk, tidak perlu validasi manual
           return "";
 
         case "price": {
@@ -348,7 +467,7 @@ export default function ProdukPage() {
   // Validate entire form
   const validateFullForm = useCallback(() => {
     const errors: Record<string, string> = {};
-    const keysToValidate = ["name", "category", "deskripsi", "price", "stock", "minimalPembelian"];
+    const keysToValidate = ["name", "category", "price", "stock", "minimalPembelian"];
     if (formData.unitSelect === "Custom") keysToValidate.push("customUnit");
 
     keysToValidate.forEach((key) => {
@@ -463,6 +582,26 @@ export default function ProdukPage() {
     }
 
     try {
+      // 1. Tentukan file gambar yang akan dikirim ke backend
+      let fileToSend: File | undefined = gambarFile ?? undefined;
+
+      // Jika user tidak upload file manual (memilih preset atau URL atau default image),
+      // konversikan formData.image menjadi File agar tersimpan ke database backend
+      if (!fileToSend && formData.image) {
+        const converted = await convertUrlToFile(
+          formData.image,
+          `produk_${Date.now()}.jpg`
+        );
+        if (converted) {
+          fileToSend = converted;
+        }
+      }
+
+      // Pastikan ukuran file aman (< 2MB) sesuai batas validasi Laravel
+      if (fileToSend) {
+        fileToSend = await compressImageFile(fileToSend);
+      }
+
       const res = await createProduk(
         token,
         {
@@ -470,11 +609,11 @@ export default function ProdukPage() {
           stok: numericStock,
           harga: numericPrice,
         },
-        gambarFile ?? undefined // kirim file gambar jika ada
+        fileToSend
       );
 
-      const newProd: Product = mapApiProduk(res.data);
-      setProducts((prev) => [newProd, ...prev]);
+      const mappedProd = mapApiProduk(res.data);
+      setProducts((prev) => [mappedProd, ...prev]);
       showToast(res.message || `Produk "${formData.name}" berhasil disimpan!`, "success");
 
       setIsSubmitting(false);
@@ -484,9 +623,14 @@ export default function ProdukPage() {
       setViewMode("table");
       resetForm();
     } catch (err: unknown) {
-      const error = err as { message?: string };
+      const error = err as { message?: string; errors?: Record<string, string[]> };
       setIsSubmitting(false);
-      showToast(error?.message ?? "Gagal menyimpan produk ke server", "error");
+      let errMsg = error?.message ?? "Gagal menyimpan produk ke server";
+      if (error?.errors) {
+        const firstErr = Object.values(error.errors).flat()[0];
+        if (firstErr) errMsg = firstErr;
+      }
+      showToast(errMsg, "error");
     }
   };
 
@@ -509,6 +653,7 @@ export default function ProdukPage() {
       statusProduk: p.status === "Habis" ? "Nonaktif" : "Aktif",
       image: p.image,
     });
+    setGambarFile(null); // reset file gambar upload
     setFieldErrors({});
     setTouchedFields({});
     setIsDirty(false);
@@ -555,23 +700,47 @@ export default function ProdukPage() {
         harga: numericPrice,
       });
 
-      // Upload gambar baru jika user memilih file
-      if (gambarFile && token) {
+      // Tentukan apakah gambar perlu diupload ke backend:
+      // 1. User memilih file baru via Upload File (gambarFile ada)
+      // 2. ATAU user mengganti preset/URL gambar yang berbeda dari editingProduct.image
+      let fileToUpload: File | undefined = gambarFile ?? undefined;
+      if (!fileToUpload && formData.image && formData.image !== editingProduct.image) {
+        const converted = await convertUrlToFile(
+          formData.image,
+          `produk_${productId}_${Date.now()}.jpg`
+        );
+        if (converted) {
+          fileToUpload = converted;
+        }
+      }
+
+      if (fileToUpload && token) {
+        fileToUpload = await compressImageFile(fileToUpload);
         try {
-          const imgRes = await uploadGambarProduk(token, productId, gambarFile);
-          // Update data produk dengan gambar baru dari response
+          const imgRes = await uploadGambarProduk(token, productId, fileToUpload);
           const updatedWithGambar = mapApiProduk(imgRes.data);
           setProducts((prev) =>
             prev.map((item) => (item.id === productId ? updatedWithGambar : item))
           );
-        } catch {
+          setFailedImages((prev) => {
+            const next = { ...prev };
+            delete next[productId];
+            return next;
+          });
+        } catch (imgErr) {
+          console.error("Gagal upload gambar saat edit:", imgErr);
           showToast("Data produk tersimpan, tapi gagal upload gambar.", "error");
         }
       } else {
-        const updatedProd: Product = mapApiProduk(res.data);
+        const mappedProd = mapApiProduk(res.data);
         setProducts((prev) =>
-          prev.map((item) => (item.id === productId ? updatedProd : item))
+          prev.map((item) => (item.id === productId ? mappedProd : item))
         );
+        setFailedImages((prev) => {
+          const next = { ...prev };
+          delete next[productId];
+          return next;
+        });
       }
 
       setEditingProduct(null);
@@ -584,9 +753,14 @@ export default function ProdukPage() {
       setViewMode("table");
       resetForm();
     } catch (err: unknown) {
-      const error = err as { message?: string };
+      const error = err as { message?: string; errors?: Record<string, string[]> };
       setIsSubmitting(false);
-      showToast(error?.message ?? "Gagal memperbarui produk di server", "error");
+      let errMsg = error?.message ?? "Gagal memperbarui produk di server";
+      if (error?.errors) {
+        const firstErr = Object.values(error.errors).flat()[0];
+        if (firstErr) errMsg = firstErr;
+      }
+      showToast(errMsg, "error");
     }
   };
 
@@ -777,10 +951,35 @@ export default function ProdukPage() {
                   disabled={isSubmitting}
                   onChange={(e) => {
                     const selected = KOMODITAS_CATALOG.find((k) => k.name === e.target.value);
+                    const autoDeskripsi = e.target.value
+                      ? `Hadirkan nutrisi terbaik untuk keluarga dengan sayur ${e.target.value.toLowerCase()} segar dari petani lokal Harvesta!`
+                      : "";
+                    
+                    // Cari preset foto yang cocok jika user belum upload foto khusus
+                    let matchingPresetUrl = formData.image;
+                    if (!gambarFile) {
+                      const matchedPreset = PRESET_IMAGES.find((p) =>
+                        e.target.value.toLowerCase().includes(p.label.split(" ")[0].toLowerCase()) ||
+                        (selected && selected.category.toLowerCase().includes(p.label.split(" ")[0].toLowerCase()))
+                      );
+                      if (matchedPreset) {
+                        matchingPresetUrl = matchedPreset.url;
+                      }
+                    }
+
                     if (selected) {
-                      handleFieldsChange({ name: e.target.value, category: selected.category });
+                      handleFieldsChange({
+                        name: e.target.value,
+                        category: selected.category,
+                        deskripsi: autoDeskripsi,
+                        image: matchingPresetUrl,
+                      });
                     } else {
-                      handleFieldChange("name", e.target.value);
+                      handleFieldsChange({
+                        name: e.target.value,
+                        deskripsi: autoDeskripsi,
+                        image: matchingPresetUrl,
+                      });
                     }
                   }}
                   onBlur={() => handleFieldBlur("name")}
@@ -875,36 +1074,24 @@ export default function ProdukPage() {
                 </div>
               </div>
 
-              {/* Deskripsi */}
+              {/* Deskripsi — di-generate otomatis dari nama produk */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="field-deskripsi" className="text-gray-700 font-semibold text-xs">
                     Deskripsi Produk
                   </Label>
-                  <span className="text-[11px] text-gray-400">({formData.deskripsi.length}/500)</span>
+                  <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    Otomatis
+                  </span>
                 </div>
                 <textarea
                   id="field-deskripsi"
                   rows={4}
                   value={formData.deskripsi}
-                  disabled={isSubmitting}
-                  onChange={(e) => handleFieldChange("deskripsi", e.target.value)}
-                  onBlur={() => handleFieldBlur("deskripsi")}
-                  placeholder="Tuliskan deskripsi lengkap kualitas produk panen Anda..."
-                  aria-invalid={!!fieldErrors.deskripsi}
-                  aria-describedby={fieldErrors.deskripsi ? "err-deskripsi" : undefined}
-                  className={`w-full p-3 rounded-xl border outline-none text-xs text-gray-800 transition ${
-                    fieldErrors.deskripsi
-                      ? "border-red-500 ring-2 ring-red-100"
-                      : "border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
-                  }`}
+                  readOnly
+                  placeholder="Pilih nama produk di atas untuk mengisi deskripsi secara otomatis..."
+                  className="w-full p-3 rounded-xl border border-gray-200 outline-none text-xs text-gray-600 bg-gray-50 cursor-not-allowed resize-none"
                 />
-                {fieldErrors.deskripsi && (
-                  <p id="err-deskripsi" className="text-red-500 text-[11px] flex items-center gap-1 mt-1 font-semibold">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{fieldErrors.deskripsi}</span>
-                  </p>
-                )}
               </div>
             </div>
 
@@ -1110,7 +1297,10 @@ export default function ProdukPage() {
                       <button
                         key={imgItem.label}
                         type="button"
-                        onClick={() => handleFieldChange("image", imgItem.url)}
+                        onClick={() => {
+                          setGambarFile(null);
+                          handleFieldChange("image", imgItem.url);
+                        }}
                         className={`relative rounded-xl overflow-hidden border-2 aspect-square group transition cursor-pointer ${
                           isSelected ? "border-[#1B4332] ring-2 ring-[#1B4332]/20" : "border-gray-200 hover:border-emerald-400"
                         }`}
@@ -1171,7 +1361,10 @@ export default function ProdukPage() {
                     id="field-image-url"
                     value={formData.image}
                     disabled={isSubmitting}
-                    onChange={(e) => handleFieldChange("image", e.target.value)}
+                    onChange={(e) => {
+                      setGambarFile(null);
+                      handleFieldChange("image", e.target.value);
+                    }}
                     placeholder="Paste URL foto..."
                     className="h-10 w-full rounded-xl text-xs sm:flex-1 border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20 transition"
                   />

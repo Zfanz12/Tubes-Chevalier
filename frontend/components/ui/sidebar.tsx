@@ -17,6 +17,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
+import { usePendingOrderCount } from "@/hooks/use-pending-orders";
 import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
@@ -29,7 +30,7 @@ import { cn } from "@/lib/utils";
 const menuItems = [
   { name: "Dashboard", icon: LayoutGrid, href: "/dashboard" },
   { name: "Produk", icon: Sprout, href: "/produk" },
-  { name: "Pesanan", icon: ShoppingCart, href: "/pesanan", badge: "2" },
+  { name: "Pesanan", icon: ShoppingCart, href: "/pesanan" },
   { name: "Transaksi", icon: CreditCard, href: "/transaksi" },
   { name: "Data Panen", icon: ClipboardList, href: "/data-panen" },
   { name: "Chat", icon: MessageCircle, href: "/chat" },
@@ -41,6 +42,7 @@ export default function Sidebar() {
   const { isOpen, toggle } = useSidebar();
   const pathname = usePathname();
   const isProfilePage = pathname === "/profile";
+  const pendingCount = usePendingOrderCount();
 
   return (
     <aside
@@ -118,61 +120,67 @@ export default function Sidebar() {
             pathname === item.href ||
             (item.href === "/produk" && pathname?.startsWith("/produk"));
 
-          const linkContent = (
-            <Link
-              href={item.href}
-              className={cn(
-                "flex items-center rounded-lg transition-all duration-300 ease-in-out text-sm font-medium w-full relative h-12 overflow-hidden",
-                isOpen ? "px-3.5 justify-start" : "px-0 justify-center",
-                isActive
-                  ? "bg-[#658d7c] text-white"
-                  : "text-emerald-100/90 hover:bg-[#2d5746] hover:text-white"
-              )}
-            >
-              {/* Icon Container with relative position for collapsed badge */}
-              <div className="relative flex items-center justify-center shrink-0">
-                <Icon
-                  className={cn(
-                    "w-5 h-5 shrink-0 transition-all duration-300",
-                    isActive ? "fill-current" : "fill-none"
-                  )}
-                />
+          // Badge: hanya tampil untuk Pesanan, dan hanya jika ada pesanan pending
+          const badgeVal =
+            item.href === "/pesanan" && pendingCount > 0
+              ? String(pendingCount > 99 ? "99+" : pendingCount)
+              : undefined;
 
-                {/* Collapsed Badge (Overlaid on top-right of Icon to prevent cropping) */}
-                {!isOpen && item.badge && (
-                  <span
-                    className={cn(
-                      "absolute -top-1.5 -right-2 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 shadow-sm z-20 transition-all duration-300",
-                      isActive ? "border-[#658d7c]" : "border-[#1B4332]"
-                    )}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </div>
-
-              {/* Text Label with Smooth Opacity & Width Transition */}
-              <span
+          return (
+            <React.Fragment key={item.name}>
+              <Link
+                href={item.href}
                 className={cn(
-                  "whitespace-nowrap transition-all duration-300 ease-in-out overflow-hidden flex-1",
-                  isOpen
-                    ? "opacity-100 max-w-xs ml-3"
-                    : "opacity-0 max-w-0 ml-0 pointer-events-none"
+                  "flex items-center rounded-lg transition-all duration-300 ease-in-out text-sm font-medium w-full relative h-12 overflow-hidden",
+                  isOpen ? "px-3.5 justify-start" : "px-0 justify-center",
+                  isActive
+                    ? "bg-[#658d7c] text-white"
+                    : "text-emerald-100/90 hover:bg-[#2d5746] hover:text-white"
                 )}
               >
-                {item.name}
-              </span>
+                {/* Icon Container with relative position for collapsed badge */}
+                <div className="relative flex items-center justify-center shrink-0">
+                  <Icon
+                    className={cn(
+                      "w-5 h-5 shrink-0 transition-all duration-300",
+                      isActive ? "fill-current" : "fill-none"
+                    )}
+                  />
 
-              {/* Expanded Badge */}
-              {isOpen && item.badge && (
-                <span className="bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0 ml-2 transition-all duration-300 ease-in-out">
-                  {item.badge}
+                  {/* Collapsed Badge (overlaid on icon) */}
+                  {!isOpen && badgeVal && (
+                    <span
+                      className={cn(
+                        "absolute -top-1.5 -right-2 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 shadow-sm z-20 transition-all duration-300",
+                        isActive ? "border-[#658d7c]" : "border-[#1B4332]"
+                      )}
+                    >
+                      {badgeVal}
+                    </span>
+                  )}
+                </div>
+
+                {/* Text Label with Smooth Opacity & Width Transition */}
+                <span
+                  className={cn(
+                    "whitespace-nowrap transition-all duration-300 ease-in-out overflow-hidden flex-1",
+                    isOpen
+                      ? "opacity-100 max-w-xs ml-3"
+                      : "opacity-0 max-w-0 ml-0 pointer-events-none"
+                  )}
+                >
+                  {item.name}
                 </span>
-              )}
-            </Link>
-          );
 
-          return <React.Fragment key={item.name}>{linkContent}</React.Fragment>;
+                {/* Expanded Badge */}
+                {isOpen && badgeVal && (
+                  <span className="bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0 ml-2 transition-all duration-300 ease-in-out">
+                    {badgeVal}
+                  </span>
+                )}
+              </Link>
+            </React.Fragment>
+          );
         })}
       </nav>
 
@@ -191,4 +199,4 @@ export default function Sidebar() {
       </div>
     </aside>
   );
-}
+}
