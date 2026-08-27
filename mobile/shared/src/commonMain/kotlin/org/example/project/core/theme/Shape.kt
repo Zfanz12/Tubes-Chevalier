@@ -15,3 +15,9 @@ val AppShape = Shapes(
     large = RoundedCornerShape(24.dp)
 
 )
+
+// Radius pill (80px) -- dipakai langsung via Modifier.clip(AppShapePill) untuk badge status,
+// chip persentase, dan tombol bulat penuh. Di luar Shapes() di atas karena Material3 Shapes
+// hanya menampung 5 slot standar (extraSmall..extraLarge), sedangkan pill dipakai ad-hoc di
+// banyak komponen custom (lihat ProductCard, status badge di Dashboard Figma).
+val AppShapePill = RoundedCornerShape(80.dp)

@@ -1,218 +1,282 @@
 package org.example.project.auth.presentation.login
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import org.example.project.core.component.AppButton
-import org.example.project.core.component.AppTextField
-import org.example.project.core.component.DividerWithText
-import org.example.project.core.component.GoogleButton
-import org.example.project.core.component.PasswordField
+import org.example.project.core.presentation.component.AppButton
+import org.example.project.core.presentation.component.AppTextField
+import org.example.project.core.presentation.component.BackButton
 import org.example.project.core.theme.AppColors
+import org.example.project.core.theme.AppSpacing
+
 
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onBackClick: () -> Unit = {}
 ) {
 
     val state by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(state.isSuccess) {
-        if (state.isSuccess) {
+    LaunchedEffect(key1 = state.isSuccess, key2 = state.otpCode) {
+        if (state.isSuccess && state.stage == LoginStage.OTP) {
             onLoginSuccess()
         }
     }
 
-    Scaffold {
+    Column(
 
-            padding ->
-
-        Column(
-
-            modifier = Modifier
-
-                .padding(padding)
-
-                .fillMaxSize()
-
-                .verticalScroll(rememberScrollState())
-
-                .padding(horizontal = 24.dp),
-
-            horizontalAlignment = Alignment.CenterHorizontally
-
-        ) {
-
-            Spacer(Modifier.height(56.dp))
-
-            Text(
-
-                text = "🌿",
-
-                style = MaterialTheme.typography.displaySmall
-
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(
+                horizontal = 24.dp,
+                vertical = 20.dp
             )
 
-            Spacer(Modifier.height(12.dp))
+    ) {
 
+        BackButton(
+            onClick = {
+
+                if (state.stage == LoginStage.OTP) {
+
+                    viewModel.changePhoneNumber()
+
+                } else {
+
+                    onBackClick()
+
+                }
+
+            },
+
+            label = "Kembali",
+
+            contentColor = AppColors.Primary
+
+        )
+
+
+        Spacer(
+            modifier = Modifier.height(36.dp)
+        )
+
+        if (state.stage == LoginStage.PHONE) {
+            Row {
+                Text(
+                    text = "Login ",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.Primary
+                )
+                Text(
+                    text = "Harvesta",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.Tertiary
+                )
+            }
+        } else {
             Text(
-
-                text = "HARVESTA",
-
+                text = "Verifikasi WhatsApp",
                 style = MaterialTheme.typography.headlineMedium,
-
                 fontWeight = FontWeight.Bold,
-
                 color = AppColors.Primary
-
             )
+        }
 
-            Spacer(Modifier.height(32.dp))
 
-            Text(
+        Spacer(
+            modifier = Modifier.height(10.dp)
+        )
 
-                "Selamat Datang",
 
-                style = MaterialTheme.typography.headlineSmall,
+        Text(
 
-                fontWeight = FontWeight.Bold
+            text =
+                if (state.stage == LoginStage.PHONE) {
 
-            )
+                    "Masuk menggunakan nomor WhatsApp untuk melanjutkan ke Harvesta."
 
-            Spacer(Modifier.height(6.dp))
+                } else {
 
-            Text(
+                    "Masukkan kode OTP yang dikirim ke WhatsApp ${state.noHp}."
 
-                "Masuk untuk melanjutkan",
+                },
 
-                style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyMedium,
 
-                color = AppColors.Subtitle
+            color = AppColors.Subtitle
 
-            )
+        )
 
-            Spacer(Modifier.height(32.dp))
 
-            AppTextField(
+        Spacer(
+            modifier = Modifier.height(32.dp)
+        )
 
-                value = state.email,
+        when (state.stage) {
 
-                onValueChange = viewModel::onEmailChange,
-
-                label = "Email"
-
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            PasswordField(
-
-                value = state.password,
-
-                onValueChange = viewModel::onPasswordChange
-
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-
-                modifier = Modifier.fillMaxWidth(),
-
-                horizontalArrangement = Arrangement.End
-
-            ) {
-
-                TextButton(
-
-                    onClick = { }
-
-                ) {
-
-                    Text("Lupa Password?")
-
-                }
-
-            }
-
-            state.errorMessage?.let {
-
-                Spacer(Modifier.height(8.dp))
+            LoginStage.PHONE -> {
 
                 Text(
 
-                    text = it,
+                    text = "Nomor WhatsApp",
 
-                    color = MaterialTheme.colorScheme.error
+                    style = MaterialTheme.typography.labelLarge,
+
+                    fontWeight = FontWeight.SemiBold,
+
+                    color = AppColors.Text
+
+                )
+
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+
+                AppTextField(
+
+                    value = state.noHp,
+
+                    onValueChange = viewModel::onNoHpChange,
+
+                    label = "Nomor WhatsApp",
+
+                    placeholder = "Contoh: 081234567890",
+
+                    keyboardOptions =
+                        KeyboardOptions(
+                            keyboardType = KeyboardType.Phone
+                        ),
+
+                    shape =
+                        RoundedCornerShape(14.dp)
 
                 )
 
             }
 
-            Spacer(Modifier.height(16.dp))
 
-            AppButton(
-
-                modifier = Modifier
-
-                    .fillMaxWidth()
-
-                    .height(54.dp),
-
-                text = "LOGIN",
-
-                loading = state.isLoading,
-
-                onClick = {
-
-                    viewModel.submit()
-
-                }
-
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            DividerWithText()
-
-            Spacer(Modifier.height(24.dp))
-
-            GoogleButton()
-
-            Spacer(Modifier.height(24.dp))
-
-            Row(
-
-                verticalAlignment = Alignment.CenterVertically
-
-            ) {
+            LoginStage.OTP -> {
 
                 Text(
 
-                    "Belum punya akun?"
+                    text = "Kode OTP",
+
+                    style = MaterialTheme.typography.labelLarge,
+
+                    fontWeight = FontWeight.SemiBold,
+
+                    color = AppColors.Text
 
                 )
 
-                TextButton(
 
-                    onClick = onNavigateToRegister
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+
+                AppTextField(
+
+                    value = state.otpCode,
+
+                    onValueChange = viewModel::onOtpCodeChange,
+
+                    label = "Kode OTP",
+
+                    placeholder = "Masukkan kode OTP",
+
+                    keyboardOptions =
+                        KeyboardOptions(
+                            keyboardType =
+                                KeyboardType.Number
+                        ),
+
+                    shape =
+                        RoundedCornerShape(14.dp)
+
+                )
+
+
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
+
+
+                Row(
+
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
+                    horizontalArrangement =
+                        Arrangement.SpaceBetween
 
                 ) {
 
                     Text(
 
-                        "Daftar"
+                        text = "Ganti nomor",
+
+                        color = AppColors.TextMuted,
+
+                        style =
+                            MaterialTheme.typography.bodySmall,
+
+                        modifier =
+                            Modifier.clickable {
+
+                                viewModel.changePhoneNumber()
+
+                            }
+
+                    )
+
+
+                    Text(
+
+                        text = "Kirim ulang OTP",
+
+                        color = AppColors.Primary,
+
+                        style =
+                            MaterialTheme.typography.bodySmall,
+
+                        fontWeight =
+                            FontWeight.SemiBold,
+
+                        modifier =
+                            Modifier.clickable {
+
+                                viewModel.resendOtp()
+
+                            }
 
                     )
 
@@ -220,9 +284,135 @@ fun LoginScreen(
 
             }
 
-            Spacer(Modifier.height(32.dp))
+        }
+
+        state.infoMessage?.let { message ->
+
+            Spacer(
+                modifier = Modifier.height(12.dp)
+            )
+
+            Text(
+
+                text = message,
+
+                color = AppColors.Success,
+
+                style =
+                    MaterialTheme.typography.bodySmall
+
+            )
 
         }
+
+
+        state.errorMessage?.let { message ->
+
+            Spacer(
+                modifier = Modifier.height(12.dp)
+            )
+
+            Text(
+
+                text = message,
+
+                color = AppColors.Error,
+
+                style =
+                    MaterialTheme.typography.bodySmall
+
+            )
+
+        }
+
+
+        Spacer(
+            modifier = Modifier.height(28.dp)
+        )
+
+        when (state.stage) {
+
+            LoginStage.PHONE -> {
+
+                AppButton(
+
+                    text = "Kirim OTP",
+
+                    loading = state.isLoading,
+
+                    shape =
+                        RoundedCornerShape(14.dp),
+
+                    onClick = {
+
+                        viewModel.sendOtp()
+
+                    }
+
+                )
+
+            }
+
+
+            LoginStage.OTP -> {
+
+                AppButton(
+
+                    text = "Masuk",
+
+                    loading = state.isLoading,
+
+                    shape =
+                        RoundedCornerShape(14.dp),
+
+                    onClick = {
+                        viewModel.submit()
+                        if (state.isSuccess) {
+                            onLoginSuccess()
+                        }
+                    }
+
+                )
+
+            }
+
+        }
+
+
+        Spacer(
+            modifier = Modifier.height(24.dp)
+        )
+
+        Row(
+            modifier =
+                Modifier.fillMaxWidth(),
+            horizontalArrangement =
+                Arrangement.Center,
+            verticalAlignment =
+                Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Belum punya akun? ",
+                color = AppColors.TextMuted,
+                style =
+                    MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "Daftar",
+                color = AppColors.Primary,
+                style =
+                    MaterialTheme.typography.bodyMedium,
+                fontWeight =
+                    FontWeight.Bold,
+                modifier =
+                    Modifier.clickable {
+                        onNavigateToRegister()
+                    }
+            )
+        }
+        Spacer(
+            modifier = Modifier.height(8.dp)
+        )
 
     }
 

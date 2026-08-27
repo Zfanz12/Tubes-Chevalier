@@ -7,31 +7,48 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.example.project.auth.domain.usecase.LoginUseCase
+import org.example.project.auth.domain.usecase.RequestOtpUseCase
 import org.example.project.core.network.AppError
 
-class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+class LoginViewModel(
+    private val requestOtpUseCase: RequestOtpUseCase,
+    private val loginUseCase: LoginUseCase
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    fun onEmailChange(value: String) {
-        _uiState.value = _uiState.value.copy(email = value, errorMessage = null)
+    fun onNoHpChange(value: String) { _uiState.value = _uiState.value.copy(noHp = value, errorMessage = null) }
+    fun onOtpCodeChange(value: String) { _uiState.value = _uiState.value.copy(otpCode = value, errorMessage = null) }
+
+    fun sendOtp() {
+        val state = _uiState.value
+        viewModelScope.launch {
+            _uiState.value = state.copy(isLoading = true, errorMessage = null, infoMessage = null)
+            requestOtpUseCase(state.noHp)
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false, stage = LoginStage.OTP,
+                        infoMessage = "Kode OTP telah dikirim ke WhatsApp Anda"
+                    )
+                }
+                .onFailure { error -> _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = error.toMessage()) }
+        }
     }
 
-    fun onPasswordChange(value: String) {
-        _uiState.value = _uiState.value.copy(password = value, errorMessage = null)
+    fun resendOtp() = sendOtp()
+
+    fun changePhoneNumber() {
+        _uiState.value = LoginUiState(noHp = _uiState.value.noHp)
     }
 
     fun submit() {
         val state = _uiState.value
         viewModelScope.launch {
             _uiState.value = state.copy(isLoading = true, errorMessage = null)
-            val result = loginUseCase(state.email, state.password)
-            result.onSuccess {
-                _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true)
-            }.onFailure { error ->
-                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = error.toMessage())
-            }
+            loginUseCase(state.noHp, state.otpCode)
+                .onSuccess { _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true) }
+                .onFailure { error -> _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = error.toMessage()) }
         }
     }
 

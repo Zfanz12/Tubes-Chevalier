@@ -11,24 +11,27 @@ import org.example.project.core.network.AppError
 
 class RegisterViewModel(private val registerUseCase: RegisterUseCase) : ViewModel() {
 
+    // Aplikasi mobile ini KHUSUS untuk sisi UMKM -- tidak ada pilihan role di UI,
+    // role selalu dikirim sebagai "umkm" (sisi Petani ada di aplikasi/kanal terpisah).
+    private val fixedRole = "umkm"
+
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
     fun onNameChange(v: String) { _uiState.value = _uiState.value.copy(name = v, errorMessage = null) }
-    fun onEmailChange(v: String) { _uiState.value = _uiState.value.copy(email = v, errorMessage = null) }
-    fun onPasswordChange(v: String) { _uiState.value = _uiState.value.copy(password = v, errorMessage = null) }
-    fun onPasswordConfirmationChange(v: String) { _uiState.value = _uiState.value.copy(passwordConfirmation = v, errorMessage = null) }
+    fun onNoHpChange(v: String) { _uiState.value = _uiState.value.copy(noHp = v, errorMessage = null) }
 
     fun submit() {
         val state = _uiState.value
         viewModelScope.launch {
             _uiState.value = state.copy(isLoading = true, errorMessage = null)
-            val result = registerUseCase(state.name, state.email, state.password, state.passwordConfirmation)
-            result.onSuccess {
-                _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true)
-            }.onFailure { error ->
-                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = error.toMessage())
-            }
+            val result = registerUseCase(
+                name = state.name,
+                noHp = state.noHp,
+                role = fixedRole
+            )
+            result.onSuccess { _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true) }
+                .onFailure { error -> _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = error.toMessage()) }
         }
     }
 

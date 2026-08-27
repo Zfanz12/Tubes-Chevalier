@@ -4,10 +4,10 @@ import org.example.project.auth.domain.model.AuthSession
 import org.example.project.auth.domain.repository.AuthRepository
 
 class LoginUseCase(private val repository: AuthRepository) {
-    suspend operator fun invoke(email: String, password: String): Result<AuthSession> {
-        if (email.isBlank() || password.isBlank()) {
-            return Result.failure(IllegalArgumentException("Email dan password wajib diisi"))
+    suspend operator fun invoke(noHp: String, otpCode: String): Result<AuthSession> {
+        if (noHp.isBlank() || otpCode.isBlank()) {
+            return Result.failure(IllegalArgumentException("Nomor WhatsApp dan kode OTP wajib diisi"))
         }
-        return repository.login(email, password)
+        return repository.login(noHp, otpCode)
     }
 }
