@@ -427,7 +427,7 @@ export default function ProfilePage() {
             >
               Profil Pribadi
             </button>
-            <button 
+            {/* <button 
               onClick={() => attemptChangeTab("usaha")}
               className={`text-left px-5 py-3 rounded-xl font-semibold text-sm transition cursor-pointer ${
                 activeTab === "usaha" 
@@ -436,7 +436,7 @@ export default function ProfilePage() {
               }`}
             >
               Profil Usaha
-            </button>
+            </button> */}
           </div>
 
           <div className="mt-auto pt-8">
