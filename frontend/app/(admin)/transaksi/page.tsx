@@ -37,19 +37,24 @@ function mapApiTransaksi(t: ApiTransaksi): TransactionItem {
     completed: "Berhasil",
     cancelled: "Gagal",
   };
+  const numTotal = typeof t.total_harga === "number" ? t.total_harga : parseFloat(String(t.total_harga)) || 0;
   return {
     id: t.kode_transaksi || `#${t.id}`,
     date: formatTanggal(t.created_at),
     customer: t.user?.name ?? t.petani?.nama ?? "—",
     method: mapMetodePembayaran(t.metode_pembayaran),
-    total: formatRupiah(t.total_harga),
-    rawTotal: t.total_harga,
+    total: formatRupiah(numTotal),
+    rawTotal: numTotal,
     status: statusMap[t.status_pesanan] ?? "Pending",
-    items: t.items?.map((item) => ({
-      name: item.produk?.nama_barang ?? `Produk #${item.produk_id}`,
-      qty: `${item.jumlah} kg`,
-      price: formatRupiah(item.harga_satuan * item.jumlah),
-    })),
+    items: t.items?.map((item) => {
+      const itemHarga = typeof item.harga_satuan === "number" ? item.harga_satuan : parseFloat(String(item.harga_satuan)) || 0;
+      const itemJumlah = typeof item.jumlah === "number" ? item.jumlah : parseFloat(String(item.jumlah)) || 1;
+      return {
+        name: item.produk?.nama_barang ?? `Produk #${item.produk_id}`,
+        qty: `${itemJumlah} kg`,
+        price: formatRupiah(itemHarga * itemJumlah),
+      };
+    }),
   };
 }
 
@@ -209,40 +214,46 @@ export default function TransaksiPage() {
       const d = parseDDMMYYYY(tx.date) ?? new Date(tx.date);
       if (!d || isNaN(d.getTime())) return;
 
+      const amount = typeof tx.rawTotal === "number" && !isNaN(tx.rawTotal) ? tx.rawTotal : 0;
       if (chartRange === "7d") {
         const jsDay = d.getDay();
         const idx = jsDay === 0 ? 6 : jsDay - 1;
         if (idx >= 0 && idx < 7) {
-          totals[idx] += tx.rawTotal;
+          totals[idx] += amount;
         }
       } else {
         const dayOfMonth = d.getDate();
         let wIdx = Math.floor((dayOfMonth - 1) / 7);
         if (wIdx > 3) wIdx = 3;
-        totals[wIdx] += tx.rawTotal;
+        totals[wIdx] += amount;
       }
     });
 
     const maxVal = Math.max(...totals, 100000);
     const yMin = 30;
     const yMax = 160;
-    const step = (470 - 30) / (labels.length - 1);
+    const step = (470 - 30) / Math.max(labels.length - 1, 1);
 
     const points = labels.map((label, i) => {
       const x = 30 + i * step;
-      const val = totals[i];
-      const y = yMax - (val / maxVal) * (yMax - yMin);
-      return { label, val, x, y, formattedVal: formatRupiah(val) };
+      const val = totals[i] || 0;
+      const yRatio = maxVal > 0 ? val / maxVal : 0;
+      const y = yMax - yRatio * (yMax - yMin);
+      const safeX = Number.isFinite(x) ? x : 30;
+      const safeY = Number.isFinite(y) ? y : yMax;
+      return { label, val: formatRupiah(val), x: safeX, y: safeY, formattedVal: formatRupiah(val) };
     });
 
-    let pathD = `M ${points[0].x} ${points[0].y}`;
+    let pathD = points.length > 0 ? `M ${points[0].x} ${points[0].y}` : "M 30 160";
     for (let i = 1; i < points.length; i++) {
       const prev = points[i - 1];
       const curr = points[i];
       const cx = prev.x + (curr.x - prev.x) / 2;
       pathD += ` C ${cx} ${prev.y}, ${cx} ${curr.y}, ${curr.x} ${curr.y}`;
     }
-    const areaD = `${pathD} L ${points[points.length - 1].x} 180 L ${points[0].x} 180 Z`;
+    const lastX = points[points.length - 1]?.x ?? 470;
+    const firstX = points[0]?.x ?? 30;
+    const areaD = `${pathD} L ${lastX} 180 L ${firstX} 180 Z`;
 
     return { points, pathD, areaD, labels };
   }, [transactions, chartRange]);
