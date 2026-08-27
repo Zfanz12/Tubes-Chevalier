@@ -304,7 +304,7 @@ export default function RegisterPage() {
                   <span className="text-sm font-semibold">Petani</span>
                   <span className="text-xs text-center leading-tight opacity-70">Jual hasil panen</span>
                 </button>
-                <button
+                {/* <button
                   type="button"
                   onClick={() => setRole("umkm")}
                   className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
@@ -316,7 +316,7 @@ export default function RegisterPage() {
                   <ShoppingBag className="w-6 h-6" />
                   <span className="text-sm font-semibold">UMKM / Pembeli</span>
                   <span className="text-xs text-center leading-tight opacity-70">Beli produk petani</span>
-                </button>
+                </button> */}
               </div>
             </div>
 
