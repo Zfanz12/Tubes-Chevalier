@@ -212,7 +212,7 @@ export default function LoginPage() {
     <div className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-hidden">
       {/* Background Image */}
       <Image
-        src="/bg-auth.jpg"
+        src="/bg4.jpg"
         alt="Background"
         fill
         priority
