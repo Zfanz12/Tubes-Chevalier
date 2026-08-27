@@ -42,6 +42,8 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.ktor.client.okhttp)
+            implementation("com.google.android.gms:play-services-tasks:18.4.1")
+            implementation("com.google.android.gms:play-services-location:21.4.0")
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

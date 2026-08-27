@@ -22,10 +22,6 @@ import org.example.project.cart.domain.model.CartItem
 import org.example.project.core.theme.AppColors
 import org.example.project.core.theme.AppShapePill
 
-// Figma node 340:1740 "content" + 425:6609 "action" -- checkbox, foto 86x86, nama produk,
-// badge jumlah, harga, lalu baris aksi (hapus + stepper qty) rata kanan di bawahnya.
-// `enabled` = false kalau toko libur ATAU stok produk habis (item.isAvailable) -- checkbox &
-// stepper dinonaktifkan, dan foto diberi overlay label "Tidak tersedia" (Figma node 340:1917).
 @Composable
 fun CartItemRow(
     item: CartItem,
@@ -36,11 +32,11 @@ fun CartItemRow(
     onRemove: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Column(
-            modifier = Modifier.weight(1f).height(86.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.Start
-        ){
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
             Icon(
                 imageVector = if (item.isSelected && enabled) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
                 contentDescription = "Pilih produk",
@@ -53,7 +49,7 @@ fun CartItemRow(
                     .size(86.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(8.dp))
-                    .background(AppColors.Neutral) // TODO: ganti AsyncImage(item.imageUrl) begitu backend punya kolom gambar
+                    .background(AppColors.Neutral)
             ) {
                 if (!item.isAvailable) {
                     Box(
@@ -72,7 +68,7 @@ fun CartItemRow(
             Column(
                 modifier = Modifier.weight(1f).height(86.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.End
+                horizontalAlignment = Alignment.Start
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.Start) {
                     Text(

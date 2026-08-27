@@ -52,7 +52,7 @@ class GetSimilarProductsUseCase(private val repository: CartRepository) {
 class CheckoutCartUseCase(private val repository: CartRepository) {
     suspend operator fun invoke(
         items: List<CartItem>,
-        metodePembayaran: String = "qris",
+        metodePembayaran: String = "cod",
         metodePengiriman: String = "pickup"
     ): Result<List<CheckoutResult>> = repository.checkout(items, metodePembayaran, metodePengiriman)
 }

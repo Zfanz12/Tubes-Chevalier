@@ -1,45 +1,37 @@
 package org.example.project.home.data.repository
 
-import kotlinx.coroutines.delay
+import org.example.project.core.network.mapNetworkError
+import org.example.project.home.data.remote.HomeApiService
 import org.example.project.home.domain.model.Category
 import org.example.project.home.domain.model.HomeUser
 import org.example.project.home.domain.model.ProductPreview
+import org.example.project.home.domain.model.StaticCategories
 import org.example.project.home.domain.repository.HomeRepository
+import org.example.project.search.data.mapper.toProductPreviews
 
-// TODO: Ganti isi function ini begitu backend menyediakan endpoint
-// GET /api/user, GET /api/categories, GET /api/products/recommended.
-// Model domain & Result<T> sudah final -- ViewModel/UseCase/Screen TIDAK perlu diubah nanti.
-class HomeRepositoryImpl : HomeRepository {
+// Terhubung ke backend Laravel sungguhan lewat HomeApiService (GET /user & GET /petani) --
+// sebelumnya kelas ini mengembalikan data statis buatan (delay + list hardcode) sebagai
+// placeholder sampai backend siap. Sekarang datanya real:
+//   - getCurrentUser()        -> GET /user (butuh Bearer token dari sesi login)
+//   - getRecommendedProducts() -> GET /petani, di-flatten per produk (sama seperti modul Search)
+//   - getCategories()         -> backend belum punya endpoint kategori terpisah, jadi masih
+//     memakai daftar kategori statis (StaticCategories) -- BUKAN data akun/transaksi, jadi ini
+//     bukan bagian dari "fake scenario", murni daftar filter UI.
+class HomeRepositoryImpl(private val api: HomeApiService) : HomeRepository {
 
     override suspend fun getCurrentUser(): Result<HomeUser> = runCatching {
-        delay(200)
-        HomeUser(name = "Ubang Sibolo", location = "Bandung")
-    }
+        val user = api.getUser()
+        HomeUser(
+            name = user.name,
+            location = user.alamat?.takeIf { it.isNotBlank() } ?: "Lokasi belum diatur"
+        )
+    }.mapNetworkError()
 
     override suspend fun getCategories(): Result<List<Category>> = runCatching {
-        delay(200)
-        listOf(
-            Category("bayam", "Bayam"),
-            Category("wortel", "Wortel"),
-            Category("kubis", "Kubis"),
-            Category("tomat", "Tomat"),
-            Category("sawi", "Sawi"),
-            Category("kangkung", "Kangkung"),
-            Category("brokoli", "Brokoli"),
-            Category("seledri", "Seledri"),
-            Category("jagung", "Jagung"),
-            Category("timun", "Timun"),
-            Category("buncis", "Buncis"),
-            Category("kol_ungu", "Kol Ungu")
-        )
+        StaticCategories.list
     }
 
     override suspend fun getRecommendedProducts(): Result<List<ProductPreview>> = runCatching {
-        delay(200)
-        listOf(
-            ProductPreview("1", "Bayam Organik", "Tani Makmur", null, 12500.0, "kg", 12.0, 1.2),
-            ProductPreview("2", "Tomat Mantep", "Tani Makmur", null, 12500.0, "kg", 12.0, 1.2),
-            ProductPreview("3", "Wortel Lokal", "Tani Makmur", null, 12500.0, "kg", 12.0, 1.2)
-        )
-    }
+        api.getPetani().flatMap { it.toProductPreviews() }
+    }.mapNetworkError()
 }

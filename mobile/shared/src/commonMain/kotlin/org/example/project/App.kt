@@ -40,17 +40,10 @@ fun App() {
         )
 
     }
-    val phaseAFakeAuthRepository = remember {
-        PhaseAFakeAuthRepository()
-    }
     val loginViewModel = remember {
         LoginViewModel(
-            RequestOtpUseCase(
-                phaseAFakeAuthRepository
-            ),
-            LoginUseCase(
-                phaseAFakeAuthRepository
-            )
+            AppContainer.requestOtpUseCase,
+            AppContainer.loginUseCase
         )
     }
 

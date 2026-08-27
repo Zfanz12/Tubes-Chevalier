@@ -36,7 +36,7 @@ data class SendOtpResponseDto(val success: Boolean = true, val message: String)
 @Serializable
 data class LoginRequestDto(
     @SerialName("no_hp") val noHp: String,
-    @SerialName("otp_code") val otpCode: String
+    @SerialName("otp") val otpCode: String
 )
 
 @Serializable

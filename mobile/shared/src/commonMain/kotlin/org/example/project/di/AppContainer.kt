@@ -21,6 +21,8 @@ import org.example.project.cart.domain.usecase.SetCartStoreSelectedUseCase
 import org.example.project.cart.domain.usecase.UpdateCartQuantityUseCase
 import org.example.project.core.network.createHttpClient
 import org.example.project.core.preview.FakeHomeRepository
+import org.example.project.home.data.remote.HomeApiService
+import org.example.project.home.data.repository.HomeRepositoryImpl
 import org.example.project.home.domain.repository.HomeRepository
 import org.example.project.home.domain.usecase.GetCategoriesUseCase
 import org.example.project.home.domain.usecase.GetCurrentUserUseCase
@@ -54,8 +56,9 @@ object AppContainer {
     val requestOtpUseCase: RequestOtpUseCase by lazy { RequestOtpUseCase(authRepository) }
     val logoutUseCase: LogoutUseCase by lazy { LogoutUseCase(authRepository) }
 
+    private val homeApiService by lazy { HomeApiService(httpClient) }
     private val homeRepository: HomeRepository by lazy {
-        FakeHomeRepository()
+        HomeRepositoryImpl(homeApiService)
     }
     val getCurrentUserUseCase: GetCurrentUserUseCase by lazy { GetCurrentUserUseCase(homeRepository) }
     val getCategoriesUseCase: GetCategoriesUseCase by lazy { GetCategoriesUseCase(homeRepository) }
