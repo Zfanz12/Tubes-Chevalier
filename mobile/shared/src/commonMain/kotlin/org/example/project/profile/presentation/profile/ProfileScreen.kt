@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -17,11 +19,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -29,9 +33,11 @@ import org.example.project.auth.domain.usecase.LogoutUseCase
 import org.example.project.core.presentation.component.AppConfirmDialog
 import org.example.project.core.preview.FakeProfileRepository
 import org.example.project.core.theme.AppColors
-import org.example.project.core.theme.AppShapePill
 import org.example.project.core.theme.AppSpacing
+import org.example.project.home.presentation.components.BottomNavBar
+import org.example.project.home.presentation.components.BottomNavItem
 import org.example.project.profile.domain.usecase.GetProfileUseCase
+import org.example.project.profile.presentation.components.ProfileMainTopBar
 
 @Composable
 fun ProfileScreen(
@@ -40,6 +46,9 @@ fun ProfileScreen(
     onNavigateToEditAlamat: () -> Unit,
     onNavigateToHelp: () -> Unit,
     onNavigateToAbout: () -> Unit,
+    onNavigateToCart: () -> Unit = {},
+    onNavigateToChat: () -> Unit = {},
+    onItemSelected: (BottomNavItem) -> Unit = {},
     onLoggedOut: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -48,19 +57,34 @@ fun ProfileScreen(
         if (state.isLoggedOut) onLoggedOut()
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(AppColors.Background)) {
+    Scaffold(
+        containerColor = AppColors.Background,
+        topBar = {
+            ProfileMainTopBar(
+                onCartClick = onNavigateToCart,
+                onMessageClick = onNavigateToChat
+            )
+        },
+        bottomBar = {
+            BottomNavBar(selectedItem = BottomNavItem.PROFILE, onItemSelected = onItemSelected)
+        }
+    ) { padding ->
 
         if (state.isLoading && state.profile == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator(color = AppColors.Primary)
             }
-            return@Column
+            return@Scaffold
         }
 
         Column(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = AppSpacing.md),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -116,7 +140,7 @@ fun ProfileScreen(
             SectionLabel("Profil")
             MenuCard {
                 MenuItem(icon = Icons.Default.Person, label = "Informasi Pribadi", onClick = onNavigateToEditProfile)
-                MenuItem(icon = Icons.Default.LocationOn, label = "Alamat Pengiriman", onClick = onNavigateToEditAlamat)
+                MenuItem(icon = Icons.Default.LocationOn, label = "Alamat Pengiriman", onClick = onNavigateToEditAlamat, showDivider = false)
             }
 
             Spacer(Modifier.height(AppSpacing.md))
@@ -132,7 +156,7 @@ fun ProfileScreen(
             OutlinedButton(
                 onClick = viewModel::onLogoutClicked,
                 modifier = Modifier.fillMaxWidth(),
-                shape = AppShapePill,
+                shape = RoundedCornerShape(12.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.Error)
             ) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = AppColors.Error)
@@ -173,7 +197,10 @@ private fun SectionLabel(text: String) {
 @Composable
 private fun MenuCard(content: @Composable ColumnScope.() -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().background(AppColors.White, RoundedCornerShape(16.dp)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), clip = false)
+            .background(AppColors.White, RoundedCornerShape(16.dp)),
         content = content
     )
 }

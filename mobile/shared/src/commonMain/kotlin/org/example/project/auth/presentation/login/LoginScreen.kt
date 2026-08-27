@@ -1,8 +1,8 @@
 package org.example.project.auth.presentation.login
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
@@ -21,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.example.project.core.presentation.component.AppButton
 import org.example.project.core.presentation.component.AppTextField
@@ -40,98 +40,64 @@ fun LoginScreen(
 
     val state by viewModel.uiState.collectAsState()
 
-
-    /*
-     * ==========================
-     * SUCCESS
-     * ==========================
-     */
-
     if (state.isSuccess) {
-
         onLoginSuccess()
-
         return
     }
 
 
-    /*
-     * ==========================
-     * MAIN
-     * ==========================
-     */
-
     Column(
-
         modifier = Modifier
             .fillMaxSize()
+            .background(AppColors.Neutral)
+            .statusBarsPadding()
             .padding(
                 horizontal = 24.dp,
                 vertical = 20.dp
             )
-
     ) {
-
-
-        /*
-         * ==========================
-         * BACK
-         * ==========================
-         */
-
         BackButton(
             onClick = {
-
                 if (state.stage == LoginStage.OTP) {
-
                     viewModel.changePhoneNumber()
-
                 } else {
-
                     onBackClick()
-
                 }
-
             },
-
             label = "Kembali",
-
-            contentColor = AppColors.Primary
-
+            contentColor = AppColors.TextMuted
         )
-
 
         Spacer(
             modifier = Modifier.height(36.dp)
         )
 
-
-        /*
-         * ==========================
-         * HEADER
-         * ==========================
-         */
-
-        Text(
-
-            text =
-                if (state.stage == LoginStage.PHONE) {
-                    "Login Harvesta"
-                } else {
-                    "Verifikasi WhatsApp"
-                },
-
-            style = MaterialTheme.typography.headlineMedium,
-
-            fontWeight = FontWeight.Bold,
-
-            color = AppColors.Primary
-
-        )
-
+        if (state.stage == LoginStage.PHONE) {
+            Row {
+                Text(
+                    text = "Login ",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.Primary
+                )
+                Text(
+                    text = "Harvesta",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.Tertiary
+                )
+            }
+        } else {
+            Text(
+                text = "Verifikasi WhatsApp",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.Primary
+            )
+        }
 
         Spacer(
-            modifier = Modifier.height(10.dp)
+            modifier = Modifier.height(8.dp)
         )
 
 
@@ -160,11 +126,6 @@ fun LoginScreen(
         )
 
 
-        /*
-         * ==========================
-         * FORM
-         * ==========================
-         */
 
         when (state.stage) {
 
@@ -178,7 +139,7 @@ fun LoginScreen(
 
                     fontWeight = FontWeight.SemiBold,
 
-                    color = AppColors.Text
+                    color = AppColors.Primary
 
                 )
 
@@ -204,7 +165,7 @@ fun LoginScreen(
                         ),
 
                     shape =
-                        RoundedCornerShape(14.dp)
+                        RoundedCornerShape(24.dp)
 
                 )
 
@@ -227,7 +188,7 @@ fun LoginScreen(
 
 
                 Spacer(
-                    modifier = Modifier.height(8.dp)
+                    modifier = Modifier.height(AppSpacing.xs)
                 )
 
 
@@ -248,13 +209,13 @@ fun LoginScreen(
                         ),
 
                     shape =
-                        RoundedCornerShape(14.dp)
+                        RoundedCornerShape(24.dp)
 
                 )
 
 
                 Spacer(
-                    modifier = Modifier.height(12.dp)
+                    modifier = Modifier.height(AppSpacing.md)
                 )
 
 
@@ -315,16 +276,11 @@ fun LoginScreen(
         }
 
 
-        /*
-         * ==========================
-         * MESSAGE
-         * ==========================
-         */
 
         state.infoMessage?.let { message ->
 
             Spacer(
-                modifier = Modifier.height(12.dp)
+                modifier = Modifier.height(AppSpacing.sm)
             )
 
             Text(
@@ -344,7 +300,7 @@ fun LoginScreen(
         state.errorMessage?.let { message ->
 
             Spacer(
-                modifier = Modifier.height(12.dp)
+                modifier = Modifier.height(AppSpacing.sm)
             )
 
             Text(
@@ -362,15 +318,10 @@ fun LoginScreen(
 
 
         Spacer(
-            modifier = Modifier.height(28.dp)
+            modifier = Modifier.height(AppSpacing.lg)
         )
 
 
-        /*
-         * ==========================
-         * ACTION
-         * ==========================
-         */
 
         when (state.stage) {
 
@@ -383,7 +334,7 @@ fun LoginScreen(
                     loading = state.isLoading,
 
                     shape =
-                        RoundedCornerShape(14.dp),
+                        RoundedCornerShape(24.dp),
 
                     onClick = {
 
@@ -405,7 +356,7 @@ fun LoginScreen(
                     loading = state.isLoading,
 
                     shape =
-                        RoundedCornerShape(14.dp),
+                        RoundedCornerShape(24.dp),
 
                     onClick = {
 
@@ -421,15 +372,8 @@ fun LoginScreen(
 
 
         Spacer(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.height(8.dp)
         )
-
-
-        /*
-         * ==========================
-         * REGISTER
-         * ==========================
-         */
 
         Row(
             modifier =
@@ -446,7 +390,7 @@ fun LoginScreen(
                     MaterialTheme.typography.bodyMedium
             )
             Text(
-                text = "Daftar",
+                text = "Sign Up",
                 color = AppColors.Primary,
                 style =
                     MaterialTheme.typography.bodyMedium,

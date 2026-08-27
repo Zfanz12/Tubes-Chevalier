@@ -17,6 +17,7 @@ import org.example.project.core.preview.FakeProfileRepository
 import org.example.project.core.theme.AppColors
 import org.example.project.core.theme.AppShapePill
 import org.example.project.core.theme.AppSpacing
+import org.example.project.core.theme.HarvestaTheme
 import org.example.project.profile.presentation.alamat_pengiriman.AlamatItem
 import org.example.project.profile.presentation.components.ProfileFormField
 import org.example.project.profile.presentation.components.ProfileTopBar
@@ -120,7 +121,7 @@ private fun EditAlamatScreenPreview() {
             org.example.project.profile.domain.usecase.UpdateAlamatUseCase(fakeRepo)
         )
     }
-    MaterialTheme {
+    HarvestaTheme {
         EditAlamatScreen(viewModel = viewModel, onBackClick = {}, onSaved = {})
     }
 }

@@ -36,11 +36,11 @@ fun CartItemRow(
     onRemove: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
+        Column(
+            modifier = Modifier.weight(1f).height(86.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.Start
+        ){
             Icon(
                 imageVector = if (item.isSelected && enabled) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
                 contentDescription = "Pilih produk",

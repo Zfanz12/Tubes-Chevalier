@@ -22,6 +22,7 @@ import org.example.project.profile.presentation.profile.ProfileScreen
 import org.example.project.profile.presentation.profile.ProfileViewModel
 import org.example.project.profile.presentation.tambah_alamat.TambahAlamatScreen
 import org.example.project.profile.presentation.tambah_alamat.TambahAlamatViewModel
+import org.example.project.home.presentation.components.BottomNavItem
 
 @Composable
 fun ProfileNavHost(
@@ -29,6 +30,9 @@ fun ProfileNavHost(
     updateProfileUseCase: UpdateProfileUseCase,
     updateAlamatUseCase: UpdateAlamatUseCase,
     logoutUseCase: LogoutUseCase,
+    onNavigateToCart: () -> Unit = {},
+    onNavigateToChat: () -> Unit = {},
+    onItemSelected: (BottomNavItem) -> Unit = {},
     onLoggedOut: () -> Unit
 ) {
     var destination by rememberSaveable { mutableStateOf(ProfileDestination.PROFILE) }
@@ -45,6 +49,9 @@ fun ProfileNavHost(
             onNavigateToEditAlamat = { destination = ProfileDestination.ALAMAT_PENGIRIMAN },
             onNavigateToHelp = { destination = ProfileDestination.HELP },
             onNavigateToAbout = { destination = ProfileDestination.ABOUT },
+            onNavigateToCart = onNavigateToCart,
+            onNavigateToChat = onNavigateToChat,
+            onItemSelected = onItemSelected,
             onLoggedOut = onLoggedOut
         )
 

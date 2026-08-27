@@ -85,6 +85,7 @@ fun WelcomeScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(
                     horizontal = 20.dp,
                     vertical = 18.dp

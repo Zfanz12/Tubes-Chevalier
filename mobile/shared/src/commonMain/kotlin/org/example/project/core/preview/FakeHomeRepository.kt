@@ -4,6 +4,7 @@ import kotlinx.coroutines.delay
 import org.example.project.home.domain.model.Category
 import org.example.project.home.domain.model.HomeUser
 import org.example.project.home.domain.model.ProductPreview
+import org.example.project.home.domain.model.StaticCategories
 import org.example.project.home.domain.repository.HomeRepository
 
 class FakeHomeRepository : HomeRepository {
@@ -23,45 +24,7 @@ class FakeHomeRepository : HomeRepository {
 
     override suspend fun getCategories(): Result<List<Category>> {
 
-        delay(100)
-
-        return Result.success(
-
-            listOf(
-
-                Category(
-                    id = "sayuran",
-                    name = "Sayuran"
-                ),
-
-                Category(
-                    id = "buah",
-                    name = "Buah"
-                ),
-
-                Category(
-                    id = "organik",
-                    name = "Organik"
-                ),
-
-                Category(
-                    id = "umbi",
-                    name = "Umbi"
-                ),
-
-                Category(
-                    id = "rempah",
-                    name = "Rempah"
-                ),
-
-                Category(
-                    id = "lainnya",
-                    name = "Lainnya"
-                )
-
-            )
-
-        )
+        return Result.success(StaticCategories.list)
     }
 
 

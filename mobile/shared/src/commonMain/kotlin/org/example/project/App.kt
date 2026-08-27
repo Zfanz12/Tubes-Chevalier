@@ -1,6 +1,6 @@
 package org.example.project
 
-import androidx.compose.material3.MaterialTheme
+import org.example.project.core.theme.HarvestaTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import org.example.project.auth.presentation.login.LoginScreen
@@ -97,7 +97,7 @@ fun App() {
         )
     }
 
-    MaterialTheme {
+    HarvestaTheme {
 
         Surface {
 

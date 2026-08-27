@@ -42,7 +42,8 @@ fun RegisterScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.Neutral) // Figma: bg #F7F7F7
+            .background(AppColors.Neutral)
+            .statusBarsPadding()
             .padding(horizontal = AppSpacing.lg, vertical = AppSpacing.lg)
     ) {
         // Figma: ikon + label "Kembali" berwarna abu (#8E8E93), bukan warna teks default
@@ -73,11 +74,17 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(AppSpacing.lg))
 
-        // MVP: passwordless (WhatsApp OTP) -- form register HANYA 2 kolom: Nama Lengkap
-        // dan Nomor WhatsApp. Tidak ada email, password, alamat, koordinat, ATAUPUN pilihan
-        // role lagi -- aplikasi mobile ini khusus sisi UMKM, jadi role otomatis "umkm"
-        // (lihat RegisterViewModel.fixedRole). Sisi Petani ditangani di kanal terpisah.
-        // Figma: border field #8E8E93 (= AppColors.TextMuted), radius 24dp -- lebih bulat dari default
+        Text(
+            text = "Nama Lengkap",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = AppColors.Primary
+        )
+
+        Spacer(
+            modifier = Modifier.height(AppSpacing.xs)
+        )
+
         AppTextField(
             value = state.name,
             onValueChange = viewModel::onNameChange,
@@ -87,6 +94,17 @@ fun RegisterScreen(
         )
 
         Spacer(Modifier.height(AppSpacing.md))
+
+        Text(
+            text = "Nomor WhatsApp",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = AppColors.Primary
+        )
+
+        Spacer(
+            modifier = Modifier.height(AppSpacing.xs)
+        )
 
         AppTextField(
             value = state.noHp,
@@ -110,7 +128,7 @@ fun RegisterScreen(
         // Sebelumnya Modifier.weight(1f) -- mendorong teks ini sampai ke bawah layar karena
         // Column ini fillMaxSize(). Sesuai Figma (node 382-xxxx Sign Up), teksnya menempel
         // tepat di bawah tombol Sign Up, jadi cukup spacing tetap seperti jarak antar elemen lain.
-        Spacer(Modifier.height(AppSpacing.lg))
+        Spacer(Modifier.height(8.dp))
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text("Sudah punya akun? ", color = AppColors.TextMuted, style = MaterialTheme.typography.bodyMedium)

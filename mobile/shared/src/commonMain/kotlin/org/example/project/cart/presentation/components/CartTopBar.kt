@@ -19,7 +19,11 @@ import org.example.project.core.theme.AppColors
 @Composable
 fun CartTopBar(onBack: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().background(AppColors.White).padding(vertical = 12.dp, horizontal = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AppColors.White)
+            .statusBarsPadding()
+            .padding(vertical = 12.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) {

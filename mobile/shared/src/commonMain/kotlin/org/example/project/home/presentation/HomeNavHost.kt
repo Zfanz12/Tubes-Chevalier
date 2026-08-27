@@ -57,6 +57,16 @@ fun HomeNavHost(
         mutableStateOf<ProductPreview?>(null)
     }
 
+    // Layar Cart & Chat bisa diakses dari beberapa tempat (Home, Product Detail, Profile),
+    // jadi kita ingat asalnya supaya tombol kembali mengarah ke layar yang benar.
+    var cartBackDestination by remember {
+        mutableStateOf(HomeDestination.HOME)
+    }
+
+    var chatBackDestination by remember {
+        mutableStateOf(HomeDestination.PRODUCT_DETAIL)
+    }
+
     val state by viewModel.uiState.collectAsState()
 
     when (destination) {
@@ -82,6 +92,9 @@ fun HomeNavHost(
             cartViewModel = cartViewModel,
 
             onNavigateToCart = {
+                cartBackDestination =
+                    HomeDestination.HOME
+
                 destination =
                     HomeDestination.CART
             },
@@ -169,7 +182,7 @@ fun HomeNavHost(
 
             onBack = {
                 destination =
-                    HomeDestination.HOME
+                    cartBackDestination
             }
         )
 
@@ -185,6 +198,48 @@ fun HomeNavHost(
 
             logoutUseCase =
                 logoutUseCase,
+
+            onNavigateToCart = {
+                cartBackDestination =
+                    HomeDestination.PROFILE
+
+                destination =
+                    HomeDestination.CART
+            },
+
+            onNavigateToChat = {
+                chatBackDestination =
+                    HomeDestination.PROFILE
+
+                destination =
+                    HomeDestination.CHAT
+            },
+
+            onItemSelected = { item ->
+
+                when (item) {
+
+                    BottomNavItem.HOME -> {
+                        destination =
+                            HomeDestination.HOME
+                    }
+
+                    BottomNavItem.ORDER -> {
+                        destination =
+                            HomeDestination.ORDER
+                    }
+
+                    BottomNavItem.NOTIFICATION -> {
+                        destination =
+                            HomeDestination.NOTIFICATION
+                    }
+
+                    BottomNavItem.PROFILE -> {
+                        destination =
+                            HomeDestination.PROFILE
+                    }
+                }
+            },
 
             onLoggedOut =
                 onLoggedOut
@@ -203,11 +258,17 @@ fun HomeNavHost(
                     },
 
                     onChat = {
+                        chatBackDestination =
+                            HomeDestination.PRODUCT_DETAIL
+
                         destination =
                             HomeDestination.CHAT
                     },
 
                     onAddToCart = {
+                        cartBackDestination =
+                            HomeDestination.HOME
+
                         destination =
                             HomeDestination.CART
                     }
@@ -223,7 +284,7 @@ fun HomeNavHost(
         HomeDestination.CHAT -> ChatScreen(
             onBack = {
                 destination =
-                    HomeDestination.PRODUCT_DETAIL
+                    chatBackDestination
             }
         )
 

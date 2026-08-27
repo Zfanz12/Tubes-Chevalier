@@ -1,5 +1,6 @@
 package org.example.project.home.presentation.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,10 +17,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.project.core.theme.AppColors
 import org.example.project.home.domain.model.Category
+import org.example.project.home.presentation.category.categoryImageRes
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun CategorySection(
@@ -56,12 +60,20 @@ private fun CategoryChip(category: Category, onClick: () -> Unit, isMore: Boolea
         modifier = Modifier.width(84.dp).clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        val imageRes = if (isMore) null else categoryImageRes(category.id)
+
         Box(
             modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(AppColors.Neutral),
             contentAlignment = Alignment.Center
         ) {
-            if (isMore) {
-                Icon(imageVector = Icons.Default.MoreHoriz, contentDescription = "Lainnya", tint = AppColors.Primary)
+            when {
+                isMore -> Icon(imageVector = Icons.Default.MoreHoriz, contentDescription = "Lainnya", tint = AppColors.Primary)
+                imageRes != null -> Image(
+                    painter = painterResource(imageRes),
+                    contentDescription = category.name,
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.Crop
+                )
             }
         }
         Spacer(Modifier.height(8.dp))

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -105,6 +107,7 @@ fun NotificationScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(AppColors.White)
+                .statusBarsPadding()
                 .padding(
                     horizontal = 8.dp,
                     vertical = 8.dp
@@ -182,7 +185,7 @@ private fun NotificationItem(
             )
             .background(
                 if (notification.unread) {
-                    AppColors.LightGreen
+                    AppColors.Secondary
                 } else {
                     AppColors.White
                 }

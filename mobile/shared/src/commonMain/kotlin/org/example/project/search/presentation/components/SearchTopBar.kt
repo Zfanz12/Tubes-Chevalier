@@ -40,7 +40,10 @@ fun SearchTopBar(
     onFilterClick: (() -> Unit)? = null
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -52,9 +55,9 @@ fun SearchTopBar(
             modifier = Modifier
                 .weight(1f)
                 .height(40.dp)
-                .background(color = Color(0xFFE8E8E8), shape = RoundedCornerShape(80.dp))
+                .background(color = AppColors.Border, shape = RoundedCornerShape(80.dp))
                 .border(width = 1.dp, color = AppColors.Primary, shape = RoundedCornerShape(80.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -65,14 +68,16 @@ fun SearchTopBar(
                 onValueChange = onQueryChange,
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = AppColors.Text),
+                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp,lineHeight = 12.sp,color = AppColors.Text),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
                 decorationBox = { innerTextField ->
-                    if (query.isEmpty()) {
-                        Text(placeholder, fontSize = 12.sp, color = AppColors.TextMuted)
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (query.isEmpty()) {
+                            Text(placeholder, fontSize = 12.sp, lineHeight = 12.sp, color = AppColors.TextMuted)
+                        }
+                        innerTextField()
                     }
-                    innerTextField()
                 }
             )
 

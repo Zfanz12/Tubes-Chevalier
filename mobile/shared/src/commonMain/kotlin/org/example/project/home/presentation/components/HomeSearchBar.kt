@@ -37,7 +37,7 @@ fun HomeSearchBar(
             trailingIcon = { Icon(imageVector = Icons.Default.Tune, contentDescription = "Filter") },
             singleLine = true,
             readOnly = onClick != null,
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(24.dp)
         )
 
         // Overlay transparan menangkap tap sebelum sampai ke text field di baliknya,

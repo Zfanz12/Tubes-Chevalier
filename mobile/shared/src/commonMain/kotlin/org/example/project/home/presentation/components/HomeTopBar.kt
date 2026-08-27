@@ -30,6 +30,7 @@ fun HomeTopBar(
 
         modifier = Modifier
             .fillMaxWidth()
+            .statusBarsPadding()
             .padding(
                 horizontal = 24.dp,
                 vertical = 12.dp
