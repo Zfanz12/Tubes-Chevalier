@@ -165,10 +165,10 @@ export default function Topbar() {
                   <User className="w-4 h-4" />
                   Profil Saya
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                {/* <DropdownMenuItem>
                   <Settings className="w-4 h-4" />
                   Pengaturan
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
               </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
