@@ -76,18 +76,39 @@ class TransaksiController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        if ($user->role !== 'umkm') {
-            return response()->json(['message' => 'Hanya UMKM yang dapat membuat pesanan'], 403);
+
+        // Both umkm and petani can create transactions.
+        // Petani creates walk-in orders (pelanggan datang langsung ke toko).
+        if (!in_array($user->role, ['umkm', 'petani'])) {
+            return response()->json(['message' => 'Tidak diizinkan membuat pesanan'], 403);
         }
 
-        $validator = Validator::make($request->all(), [
-            'petani_id' => 'required|exists:petanis,id',
+        // Resolve petani_id:
+        // - petani: auto-resolve dari profil mereka sendiri
+        // - umkm: wajib dikirim dari request
+        $resolvedPetaniId = null;
+        if ($user->role === 'petani') {
+            $petani = Petani::where('user_id', $user->id)->first();
+            if (!$petani) {
+                return response()->json(['message' => 'Profil petani tidak ditemukan'], 404);
+            }
+            $resolvedPetaniId = $petani->id;
+        }
+
+        $rules = [
             'metode_pembayaran' => 'required|in:cod,transfer_bank,qris',
             'metode_pengiriman' => 'required|in:pickup,delivery',
             'items' => 'required|array|min:1',
             'items.*.produk_id' => 'required|exists:produks,id',
             'items.*.jumlah' => 'required|numeric|min:0.01',
-        ]);
+        ];
+
+        // petani_id wajib hanya untuk umkm
+        if ($user->role === 'umkm') {
+            $rules['petani_id'] = 'required|exists:petanis,id';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json([
@@ -96,10 +117,12 @@ class TransaksiController extends Controller
             ], 422);
         }
 
+        $petaniId = $resolvedPetaniId ?? $request->petani_id;
+
         // Check if items belong to the farmer
         foreach ($request->items as $item) {
             $produk = Produk::find($item['produk_id']);
-            if ($produk->petani_id != $request->petani_id) {
+            if ($produk->petani_id != $petaniId) {
                 return response()->json([
                     'message' => 'Salah satu produk tidak tersedia di petani yang Anda pilih'
                 ], 422);
@@ -112,7 +135,7 @@ class TransaksiController extends Controller
         }
 
         try {
-            $transaksi = DB::transaction(function () use ($request, $user) {
+            $transaksi = DB::transaction(function () use ($request, $user, $petaniId) {
                 $total_harga = 0;
                 $itemsData = [];
 
@@ -133,7 +156,7 @@ class TransaksiController extends Controller
 
                 $transaksi = Transaksi::create([
                     'user_id' => $user->id,
-                    'petani_id' => $request->petani_id,
+                    'petani_id' => $petaniId,
                     'kode_transaksi' => 'TRX-' . date('Ymd') . '-' . strtoupper(Str::random(6)),
                     'total_harga' => $total_harga,
                     'metode_pembayaran' => $request->metode_pembayaran,

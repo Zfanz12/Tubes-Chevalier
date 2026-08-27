@@ -260,8 +260,8 @@ function RiwayatPanenDialog({
 }
 
 export default function DataPanenPage() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [upcomingCrops, setUpcomingCrops] = useState<PanenAkanDatang[]>(dummyPanenAkanDatang);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [upcomingCrops, setUpcomingCrops] = useState<PanenAkanDatang[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"Semua Status" | "Sesuai Estimasi" | "Melebihi Estimasi" | "Dibawah Estimasi">("Semua Status");
   const [currentPage, setCurrentPage] = useState(1);
@@ -656,7 +656,7 @@ export default function DataPanenPage() {
               ) : (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-gray-400 text-xs font-medium">
-                    Tidak ada data panen ditemukan.
+                    Belum ada data panen yang tercatat untuk akun Anda.
                   </td>
                 </tr>
               )}

@@ -10,11 +10,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getPetaniList } from "@/lib/api";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { showToast } from "@/lib/custom-toast";
-
-
 
 type Step = "phone" | "otp";
 
@@ -69,10 +67,55 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrorMsg(null);
 
+    const cleanNoHp = noHp.trim();
+
+    // Validasi apakah nomor HP sudah pernah terdaftar di sistem
+    let isRegistered = false;
+
+    // 1. Cek daftar registrasi di localStorage & profile
+    if (typeof window !== "undefined") {
+      const savedStr = localStorage.getItem("harvesta_registered_phones") || "[]";
+      try {
+        const arr = JSON.parse(savedStr);
+        if (Array.isArray(arr) && arr.includes(cleanNoHp)) {
+          isRegistered = true;
+        }
+      } catch {}
+      if (localStorage.getItem(`harvesta_user_profile_${cleanNoHp}`)) {
+        isRegistered = true;
+      }
+    }
+
+    // 2. Cek nomor default/seed dari database
+    const SEEDED_PHONES = ["085112341234", "08123456789", "081234567890", "089876543210"];
+    if (SEEDED_PHONES.includes(cleanNoHp)) {
+      isRegistered = true;
+    }
+
+    // 3. Cek data petani dari API backend
+    if (!isRegistered) {
+      try {
+        const petanis = await getPetaniList();
+        if (Array.isArray(petanis)) {
+          isRegistered = petanis.some(
+            (p: any) => p.user?.no_hp === cleanNoHp || p.rekening?.includes(cleanNoHp)
+          );
+        }
+      } catch {}
+    }
+
+    if (!isRegistered) {
+      setIsLoading(false);
+      const errText = `Nomor WhatsApp ${cleanNoHp} belum terdaftar! Silakan lakukan pendaftaran/register terlebih dahulu.`;
+      setErrorMsg(errText);
+      showToast(errText, "error");
+      return;
+    }
+
     try {
       const res = await apiFetch<SendOtpResponse>("/send-otp", {
         method: "POST",
-        body: { no_hp: noHp },
+        body: { no_hp: cleanNoHp },
       });
 
       setOtpPreview(res.otp_preview ?? null);
@@ -97,6 +140,20 @@ export default function LoginPage() {
         method: "POST",
         body: { no_hp: noHp, otp },
       });
+
+      // Cek apakah user belum terdaftar (masih menggunakan nama auto-generate 'User XXXX')
+      const defaultAutoName = `User ${noHp.slice(-4)}`;
+      const isUnregistered = res.user.name === defaultAutoName || /^User \d{4}$/.test(res.user.name);
+
+      if (isUnregistered) {
+        const errorText = `Nomor WhatsApp ${noHp} belum terdaftar! Silakan lakukan pendaftaran terlebih dahulu.`;
+        setErrorMsg(errorText);
+        showToast(errorText, "error");
+        setTimeout(() => {
+          router.push(`/register?no_hp=${encodeURIComponent(noHp)}`);
+        }, 1500);
+        return;
+      }
 
       const localProfileKey = `harvesta_user_profile_${res.user.no_hp}`;
       const savedProfileStr = typeof window !== "undefined" ? localStorage.getItem(localProfileKey) : null;
@@ -193,8 +250,18 @@ export default function LoginPage() {
 
         {/* Error Message */}
         {errorMsg && (
-          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600 font-medium">
-            {errorMsg}
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600 font-medium space-y-2">
+            <p>{errorMsg}</p>
+            {(errorMsg.toLowerCase().includes("tidak terdaftar") || errorMsg.toLowerCase().includes("belum terdaftar")) && (
+              <div className="pt-1">
+                <Link
+                  href={`/register?no_hp=${encodeURIComponent(noHp)}`}
+                  className="inline-flex items-center gap-1 px-4 py-1.5 bg-[#0D382A] text-white text-xs font-semibold rounded-lg hover:bg-[#08261C] transition-all shadow-2xs"
+                >
+                  Daftar Akun Baru Sekarang ➔
+                </Link>
+              </div>
+            )}
           </div>
         )}
 

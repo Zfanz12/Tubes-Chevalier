@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showToast } from "@/lib/custom-toast";
-import { createProduk, updateProduk, deleteProduk } from "@/lib/api";
+import { createProduk, updateProduk, deleteProduk, uploadGambarProduk, getProdukPetani, formatRupiah, type ApiProduk } from "@/lib/api";
 import { useAuthStore } from "@/lib/useAuthStore";
 
 interface Product {
@@ -110,6 +110,29 @@ const initialProducts: Product[] = [
   },
 ];
 
+// ─── Helper: map ApiProduk → Product ───────────────────────────────────────
+const BACKEND_URL = "http://127.0.0.1:8000";
+
+function mapApiProduk(p: ApiProduk): Product {
+  const stok = p.stok ?? 0;
+  const status = stok <= 0 ? "Habis" : stok <= 5 ? "Menipis" : "Tersedia";
+  // Jika gambar dari backend adalah path relatif (/storage/...), prefix dengan backend URL
+  let imageUrl = "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=300&q=80";
+  if (p.gambar) {
+    imageUrl = p.gambar.startsWith("http") ? p.gambar : `${BACKEND_URL}${p.gambar}`;
+  }
+  return {
+    id: p.id,
+    name: p.nama_barang,
+    category: p.nama_barang.split(" ")[0] ?? "Produk",
+    stock: `${stok} kg`,
+    price: formatRupiah(p.harga),
+    unit: "/kg",
+    status,
+    image: imageUrl,
+  };
+}
+
 let nextProdukId = 100;
 
 // MVP: 27 SKU komoditas fast-moving yang diizinkan
@@ -163,7 +186,9 @@ export default function ProdukPage() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
 
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [produkLoading, setProdukLoading] = useState(true);
+  const [produkError, setProdukError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -174,6 +199,9 @@ export default function ProdukPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedDetailProduct, setSelectedDetailProduct] = useState<Product | null>(null);
   
+  // State untuk file gambar yang dipilih user (File object, bukan hanya base64)
+  const [gambarFile, setGambarFile] = useState<File | null>(null);
+
   const [showInitialAddConfirmModal, setShowInitialAddConfirmModal] = useState(false);
   const [showAddConfirmModal, setShowAddConfirmModal] = useState(false);
   const [confirmEditInitialProduct, setConfirmEditInitialProduct] = useState<Product | null>(null);
@@ -205,6 +233,29 @@ export default function ProdukPage() {
   };
 
   const [formData, setFormData] = useState(defaultFormData);
+
+  // Fetch products from API (strictly filtered for logged in user)
+  const fetchProduk = useCallback(async () => {
+    setProdukLoading(true);
+    setProdukError(null);
+    try {
+      const data = await getProdukPetani(token ?? undefined, user?.id, user?.name);
+      if (Array.isArray(data)) {
+        setProducts(data.map(mapApiProduk));
+      } else {
+        setProducts([]);
+      }
+    } catch {
+      setProdukError("Gagal memuat produk milik Anda dari server.");
+      setProducts([]);
+    } finally {
+      setProdukLoading(false);
+    }
+  }, [token, user?.id, user?.name]);
+
+  useEffect(() => {
+    fetchProduk();
+  }, [fetchProduk]);
 
   const itemsPerPage = 5;
 
@@ -352,6 +403,7 @@ export default function ProdukPage() {
     setTouchedFields({});
     setIsDirty(false);
     setIsSubmitting(false);
+    setGambarFile(null); // reset file gambar
   };
 
   // Handle Cancel / Back Navigation with Unsaved Protection
@@ -393,8 +445,8 @@ export default function ProdukPage() {
       return;
     }
 
-    // Trigger Image 2 confirmation dialog
-    setShowAddConfirmModal(true);
+    // Execute add product directly
+    await executeAddProduct();
   };
 
   const executeAddProduct = async () => {
@@ -403,61 +455,39 @@ export default function ProdukPage() {
 
     const numericStock = parseFloat(formData.stock) || 0;
     const numericPrice = parseFloat(formData.price.replace(/[^\d]/g, "")) || 0;
-    const finalUnit =
-      formData.unitSelect === "Custom"
-        ? formData.customUnit.trim()
-          ? formData.customUnit.startsWith("/")
-            ? formData.customUnit.trim()
-            : `/${formData.customUnit.trim()}`
-          : "/unit"
-        : formData.unitSelect;
 
-    const computedStatus = computeStatusFromStock(numericStock);
-    const formattedPrice = `Rp ${numericPrice.toLocaleString("id-ID")}`;
-    const unitLabel = finalUnit.replace(/^\//, "");
+    if (!token) {
+      showToast("Gagal menambahkan produk: Sesi autentikasi tidak valid.", "error");
+      setIsSubmitting(false);
+      return;
+    }
 
-    nextProdukId++;
-    const tempId = nextProdukId;
-    const newProd: Product = {
-      id: tempId,
-      name: formData.name.trim(),
-      category: formData.category.trim(),
-      stock: `${numericStock} ${unitLabel}`,
-      price: formattedPrice,
-      unit: finalUnit,
-      status: computedStatus,
-      image: formData.image,
-    };
-
-    // Optimistic UI update
-    setProducts((prev) => [newProd, ...prev]);
-
-    // Backend sync if farmer token available
-    if (token && user?.role === "petani") {
-      try {
-        const res = await createProduk(token, {
+    try {
+      const res = await createProduk(
+        token,
+        {
           nama_barang: formData.name.trim(),
           stok: numericStock,
           harga: numericPrice,
-        });
-        setProducts((prev) =>
-          prev.map((p) => (p.id === tempId ? { ...p, id: res.data.id } : p))
-        );
-        showToast(`Produk "${formData.name}" berhasil disimpan ke server!`, "success");
-      } catch (err: unknown) {
-        const error = err as { message?: string };
-        showToast(`Produk ditambahkan lokal, gagal sinkron server: ${error?.message ?? "Error"}`, "error");
-      }
-    } else {
-      showToast(`Produk "${newProd.name}" berhasil ditambahkan!`, "success");
-    }
+        },
+        gambarFile ?? undefined // kirim file gambar jika ada
+      );
 
-    setIsSubmitting(false);
-    setIsDirty(false);
-    setFieldErrors({});
-    setTouchedFields({});
-    setViewMode("table");
-    resetForm();
+      const newProd: Product = mapApiProduk(res.data);
+      setProducts((prev) => [newProd, ...prev]);
+      showToast(res.message || `Produk "${formData.name}" berhasil disimpan!`, "success");
+
+      setIsSubmitting(false);
+      setIsDirty(false);
+      setFieldErrors({});
+      setTouchedFields({});
+      setViewMode("table");
+      resetForm();
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      setIsSubmitting(false);
+      showToast(error?.message ?? "Gagal menyimpan produk ke server", "error");
+    }
   };
 
   const openEditModal = (p: Product) => {
@@ -499,8 +529,8 @@ export default function ProdukPage() {
       return;
     }
 
-    // Trigger Image 5 confirmation dialog
-    setShowEditSubmitConfirmModal(true);
+    // Execute edit product directly
+    await executeEditProduct();
   };
 
   const executeEditProduct = async () => {
@@ -511,76 +541,68 @@ export default function ProdukPage() {
     const productId = editingProduct.id;
     const numericStock = parseFloat(formData.stock) || 0;
     const numericPrice = parseFloat(formData.price.replace(/[^\d]/g, "")) || 0;
-    const finalUnit =
-      formData.unitSelect === "Custom"
-        ? formData.customUnit.trim()
-          ? formData.customUnit.startsWith("/")
-            ? formData.customUnit.trim()
-            : `/${formData.customUnit.trim()}`
-          : "/unit"
-        : formData.unitSelect;
 
-    const computedStatus = computeStatusFromStock(numericStock);
-    const formattedPrice = `Rp ${numericPrice.toLocaleString("id-ID")}`;
-    const unitLabel = finalUnit.replace(/^\//, "");
-    const finalStatus = formData.statusProduk === "Nonaktif" ? "Habis" : computedStatus;
-
-    setProducts((prev) =>
-      prev.map((item) =>
-        item.id === productId
-          ? {
-              ...item,
-              name: formData.name.trim(),
-              category: formData.category.trim(),
-              stock: `${numericStock} ${unitLabel}`,
-              price: formattedPrice,
-              unit: finalUnit,
-              status: finalStatus,
-              image: formData.image,
-            }
-          : item
-      )
-    );
-    setEditingProduct(null);
-
-    if (token && user?.role === "petani") {
-      try {
-        await updateProduk(token, productId, {
-          nama_barang: formData.name.trim(),
-          stok: numericStock,
-          harga: numericPrice,
-        });
-        showToast(`Produk "${formData.name}" berhasil diperbarui di server!`, "success");
-      } catch (err: unknown) {
-        const error = err as { message?: string };
-        showToast(`Perubahan disimpan lokal, gagal sinkron: ${error?.message ?? "Error"}`, "error");
-      }
-    } else {
-      showToast(`Produk "${formData.name}" berhasil diperbarui!`, "success");
+    if (!token) {
+      showToast("Gagal memperbarui produk: Sesi autentikasi tidak valid.", "error");
+      setIsSubmitting(false);
+      return;
     }
 
-    setIsSubmitting(false);
-    setIsDirty(false);
-    setFieldErrors({});
-    setTouchedFields({});
-    setViewMode("table");
-    resetForm();
+    try {
+      const res = await updateProduk(token, productId, {
+        nama_barang: formData.name.trim(),
+        stok: numericStock,
+        harga: numericPrice,
+      });
+
+      // Upload gambar baru jika user memilih file
+      if (gambarFile && token) {
+        try {
+          const imgRes = await uploadGambarProduk(token, productId, gambarFile);
+          // Update data produk dengan gambar baru dari response
+          const updatedWithGambar = mapApiProduk(imgRes.data);
+          setProducts((prev) =>
+            prev.map((item) => (item.id === productId ? updatedWithGambar : item))
+          );
+        } catch {
+          showToast("Data produk tersimpan, tapi gagal upload gambar.", "error");
+        }
+      } else {
+        const updatedProd: Product = mapApiProduk(res.data);
+        setProducts((prev) =>
+          prev.map((item) => (item.id === productId ? updatedProd : item))
+        );
+      }
+
+      setEditingProduct(null);
+      showToast(res.message || `Produk "${formData.name}" berhasil diperbarui!`, "success");
+
+      setIsSubmitting(false);
+      setIsDirty(false);
+      setFieldErrors({});
+      setTouchedFields({});
+      setViewMode("table");
+      resetForm();
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      setIsSubmitting(false);
+      showToast(error?.message ?? "Gagal memperbarui produk di server", "error");
+    }
   };
 
   const executeDeleteProduct = async (toDelete: Product) => {
-    setProducts((prev) => prev.filter((p) => p.id !== toDelete.id));
+    if (!token) {
+      showToast("Gagal menghapus produk: Sesi autentikasi tidak valid.", "error");
+      return;
+    }
 
-    if (token && user?.role === "petani") {
-      try {
-        await deleteProduk(token, toDelete.id);
-        showToast(`Produk "${toDelete.name}" berhasil dihapus dari server!`, "success");
-      } catch (err: unknown) {
-        const error = err as { message?: string };
-        setProducts((prev) => [toDelete, ...prev]);
-        showToast(`Gagal menghapus dari server: ${error?.message ?? "Unknown error"}`, "error");
-      }
-    } else {
-      showToast(`Produk "${toDelete.name}" berhasil dihapus`, "success");
+    try {
+      const res = await deleteProduk(token, toDelete.id);
+      setProducts((prev) => prev.filter((p) => p.id !== toDelete.id));
+      showToast(res.message || `Produk "${toDelete.name}" berhasil dihapus!`, "success");
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      showToast(error?.message ?? "Gagal menghapus produk di server", "error");
     }
   };
 
@@ -771,6 +793,9 @@ export default function ProdukPage() {
                   }`}
                 >
                   <option value="" disabled>Pilih komoditas sayuran / buah...</option>
+                  {formData.name && !KOMODITAS_CATALOG.some((k) => k.name === formData.name) && (
+                    <option value={formData.name}>{formData.name}</option>
+                  )}
                   {KOMODITAS_CATALOG.map((k) => (
                     <option key={k.name} value={k.name}>{k.name} — ({k.category})</option>
                   ))}
@@ -1118,6 +1143,9 @@ export default function ProdukPage() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
+                        // Simpan File object untuk dikirim ke API
+                        setGambarFile(file);
+                        // Buat preview lokal via base64
                         const reader = new FileReader();
                         reader.onloadend = () => {
                           if (typeof reader.result === 'string') {
@@ -1199,6 +1227,17 @@ export default function ProdukPage() {
   // ── Main Table View for Product List ──
   return (
     <div className="space-y-6 w-full pb-10">
+      {/* Error Banner */}
+      {produkError && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+          <p className="text-xs text-amber-700 font-medium flex-1">{produkError}</p>
+          <button onClick={fetchProduk} className="text-xs font-bold text-amber-700 hover:underline shrink-0">
+            Coba lagi
+          </button>
+        </div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(3,59,42,0.06)] border border-emerald-300 ring-1 ring-black/5 flex items-center gap-4">
@@ -1389,7 +1428,7 @@ export default function ProdukPage() {
               ) : (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-gray-400 text-xs font-medium">
-                    Tidak ada produk yang sesuai dengan pencarian.
+                    Belum ada produk yang terdaftar untuk akun Anda. Klik tombol "Tambah Produk Baru" untuk mulai menambahkan.
                   </td>
                 </tr>
               )}
@@ -1430,192 +1469,6 @@ export default function ProdukPage() {
           </button>
         </div>
       </div>
-
-      {/* ── Modal Edit Produk ── */}
-      {editingProduct && (
-        <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
-          <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
-            <DialogHeader className="pb-3 border-b border-gray-100">
-              <DialogTitle className="text-lg font-bold text-gray-900">Edit Produk</DialogTitle>
-              <DialogDescription className="text-xs text-gray-500">
-                Ubah rincian informasi produk
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleEditSubmit} className="space-y-4 py-3 text-xs">
-              <div className="space-y-1.5">
-                <Label className="text-gray-700 font-semibold">Nama Produk (Komoditas)</Label>
-                <select
-                  value={formData.name}
-                  onChange={(e) => {
-                    const selected = KOMODITAS_CATALOG.find((k) => k.name === e.target.value);
-                    if (selected) {
-                      handleFieldsChange({ name: e.target.value, category: selected.category });
-                    } else {
-                      handleFieldChange("name", e.target.value);
-                    }
-                  }}
-                  className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
-                  required
-                >
-                  <option value="" disabled>Pilih komoditas...</option>
-                  {KOMODITAS_CATALOG.map((k) => (
-                    <option key={k.name} value={k.name}>{k.name} — {k.category}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-gray-700 font-semibold">Kategori</Label>
-                  <Input
-                    value={formData.category}
-                    readOnly
-                    placeholder="Otomatis dari komoditas"
-                    className="h-10 rounded-xl border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-gray-700 font-semibold">Jumlah Stok (Angka)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={formData.stock}
-                    onChange={(e) => handleFieldChange("stock", e.target.value)}
-                    className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-gray-700 font-semibold">Harga (Rp)</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={formData.price}
-                    onChange={(e) => handleFieldChange("price", e.target.value)}
-                    className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-gray-700 font-semibold">Satuan Unit</Label>
-                  <select
-                    value={formData.unitSelect}
-                    onChange={(e) => handleFieldChange("unitSelect", e.target.value)}
-                    className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
-                  >
-                    {PRESET_UNITS.map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {formData.unitSelect === "Custom" && (
-                <div className="space-y-1.5">
-                  <Label className="text-gray-700 font-semibold">Tulis Satuan Custom</Label>
-                  <Input
-                    placeholder="Contoh: /keranjang atau /ikat-besar"
-                    value={formData.customUnit}
-                    onChange={(e) => handleFieldChange("customUnit", e.target.value)}
-                    className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
-                    required
-                  />
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label className="text-gray-700 font-semibold">Upload / URL Foto Produk</Label>
-                <div className="flex flex-col sm:flex-row items-center gap-2">
-                  <input 
-                    type="file" 
-                    id="file-upload-edit" 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          if (typeof reader.result === 'string') {
-                            handleFieldChange("image", reader.result);
-                          }
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                  <Button 
-                    type="button" 
-                    onClick={() => document.getElementById('file-upload-edit')?.click()}
-                    variant="outline" 
-                    className="h-10 w-full sm:w-auto rounded-xl text-xs font-semibold px-3 flex items-center justify-center gap-1.5 cursor-pointer border-gray-200"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    Upload
-                  </Button>
-                  <Input
-                    value={formData.image}
-                    onChange={(e) => handleFieldChange("image", e.target.value)}
-                    placeholder="Atau Paste URL foto..."
-                    className="h-10 w-full sm:flex-1 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
-                  />
-                </div>
-              </div>
-
-              {/* Status Indicator */}
-              <div className="border border-emerald-200/80 bg-emerald-50/40 rounded-xl p-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Info className="w-4 h-4 text-emerald-700" />
-                  <span className="text-xs font-semibold text-gray-700">Status Terhitung Otomatis:</span>
-                </div>
-                <div>
-                  {liveComputedStatus === "Tersedia" && (
-                    <span className="inline-flex items-center justify-center bg-[#b7e4c7] text-[#1B4332] border border-[#74c69d] rounded-full px-3.5 py-0.5 text-xs font-bold">
-                      Tersedia (Stok &gt; 5)
-                    </span>
-                  )}
-                  {liveComputedStatus === "Menipis" && (
-                    <span className="inline-flex items-center justify-center bg-[#fef9c3] text-[#854d0e] border border-[#fef08a] rounded-full px-3.5 py-0.5 text-xs font-bold">
-                      Menipis (Stok ≤ 5)
-                    </span>
-                  )}
-                  {liveComputedStatus === "Habis" && (
-                    <span className="inline-flex items-center justify-center bg-gray-100 text-gray-600 border border-gray-300 rounded-full px-3.5 py-0.5 text-xs font-bold">
-                      Habis (Stok 0)
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <DialogFooter className="pt-4 gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditingProduct(null)}
-                  className="h-10 px-5 rounded-xl font-semibold cursor-pointer"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="h-10 px-6 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl font-semibold cursor-pointer flex items-center gap-2"
-                >
-                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  <span>Simpan Perubahan</span>
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      )}
 
       {/* ── 0. Modal Confirmation: Tambah Produk Baru? Initial ── */}
       <Dialog open={showInitialAddConfirmModal} onOpenChange={setShowInitialAddConfirmModal}>
