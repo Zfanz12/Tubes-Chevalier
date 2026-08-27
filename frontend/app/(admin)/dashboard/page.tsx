@@ -100,21 +100,26 @@ const statusBadgeClass: Record<string, string> = {
 
 function mapToDashboardTx(t: ApiTransaksi): DashboardTx {
   const rawDate = t.created_at ? new Date(t.created_at) : null;
+  const numTotal = typeof t.total_harga === "number" ? t.total_harga : parseFloat(String(t.total_harga)) || 0;
   return {
     id: t.kode_transaksi || `#${t.id}`,
     date: t.created_at ? formatTanggal(t.created_at) : "—",
-    rawDate,
+    rawDate: rawDate && !isNaN(rawDate.getTime()) ? rawDate : null,
     customer: t.user?.name ?? t.petani?.nama ?? "Pelanggan",
     method: mapMetodePembayaran(t.metode_pembayaran),
-    total: formatRupiah(t.total_harga ?? 0),
-    rawTotal: t.total_harga ?? 0,
+    total: formatRupiah(numTotal),
+    rawTotal: numTotal,
     status: STATUS_MAP[t.status_pesanan] ?? "Menunggu",
     items:
-      t.items?.map((item) => ({
-        name: item.produk?.nama_barang ?? `Produk #${item.produk_id}`,
-        qty: `${item.jumlah ?? 1} kg`,
-        price: formatRupiah((item.harga_satuan ?? 0) * (item.jumlah ?? 1)),
-      })) ?? [],
+      t.items?.map((item) => {
+        const itemHarga = typeof item.harga_satuan === "number" ? item.harga_satuan : parseFloat(String(item.harga_satuan)) || 0;
+        const itemJumlah = typeof item.jumlah === "number" ? item.jumlah : parseFloat(String(item.jumlah)) || 1;
+        return {
+          name: item.produk?.nama_barang ?? `Produk #${item.produk_id}`,
+          qty: `${itemJumlah} kg`,
+          price: formatRupiah(itemHarga * itemJumlah),
+        };
+      }) ?? [],
   };
 }
 
@@ -418,14 +423,18 @@ export default function DashboardPage() {
   // ── Computed: Low Stock Items ───────────────────────────────
   const lowStockItems = useMemo((): LowStockItem[] => {
     return produks
+      .map((p) => {
+        const numStok = typeof p.stok === "number" ? p.stok : parseFloat(String(p.stok)) || 0;
+        const stokFormatted = Number.isInteger(numStok) ? numStok.toString() : numStok.toFixed(2).replace(/\.?0+$/, "");
+        return {
+          name: p.nama_barang,
+          amount: `${stokFormatted} kg`,
+          stok: numStok,
+          ...getLowStockStyle(numStok),
+        };
+      })
       .filter((p) => p.stok <= 10)
-      .sort((a, b) => a.stok - b.stok)
-      .map((p) => ({
-        name: p.nama_barang,
-        amount: `${p.stok} kg`,
-        stok: p.stok,
-        ...getLowStockStyle(p.stok),
-      }));
+      .sort((a, b) => a.stok - b.stok);
   }, [produks]);
 
   // ── Computed: Recent Transactions (top 4) ───────────────────
@@ -441,16 +450,17 @@ export default function DashboardPage() {
     const totals: number[] = new Array(labels.length).fill(0);
 
     allTransactions.forEach((tx) => {
-      if (!tx.rawDate) return;
+      if (!tx.rawDate || isNaN(tx.rawDate.getTime())) return;
       const d = tx.rawDate;
+      const amount = typeof tx.rawTotal === "number" && !isNaN(tx.rawTotal) ? tx.rawTotal : 0;
       if (range === "7d") {
         const jsDay = d.getDay(); // 0=Sun
         const idx = jsDay === 0 ? 6 : jsDay - 1; // Mon=0…Sun=6
-        if (idx >= 0 && idx < 7) totals[idx] += tx.rawTotal;
+        if (idx >= 0 && idx < 7) totals[idx] += amount;
       } else {
         let wIdx = Math.floor((d.getDate() - 1) / 7);
         if (wIdx > 3) wIdx = 3;
-        totals[wIdx] += tx.rawTotal;
+        totals[wIdx] += amount;
       }
     });
 
@@ -461,19 +471,24 @@ export default function DashboardPage() {
 
     const points = labels.map((day, i) => {
       const x = 30 + i * step;
-      const rawVal = totals[i];
-      const y = yMax - (rawVal / maxVal) * (yMax - yMin);
-      return { day, val: formatRupiah(rawVal), x, y };
+      const rawVal = totals[i] || 0;
+      const yRatio = maxVal > 0 ? rawVal / maxVal : 0;
+      const y = yMax - yRatio * (yMax - yMin);
+      const safeX = Number.isFinite(x) ? x : 30;
+      const safeY = Number.isFinite(y) ? y : yMax;
+      return { day, val: formatRupiah(rawVal), x: safeX, y: safeY };
     });
 
-    let pathD = `M ${points[0].x} ${points[0].y}`;
+    let pathD = points.length > 0 ? `M ${points[0].x} ${points[0].y}` : "M 30 160";
     for (let i = 1; i < points.length; i++) {
       const prev = points[i - 1];
       const curr = points[i];
       const cx = prev.x + (curr.x - prev.x) / 2;
       pathD += ` C ${cx} ${prev.y}, ${cx} ${curr.y}, ${curr.x} ${curr.y}`;
     }
-    const areaD = `${pathD} L ${points[points.length - 1].x} 180 L ${points[0].x} 180 Z`;
+    const lastX = points[points.length - 1]?.x ?? 470;
+    const firstX = points[0]?.x ?? 30;
+    const areaD = `${pathD} L ${lastX} 180 L ${firstX} 180 Z`;
 
     const hasData = totals.some((v) => v > 0);
 

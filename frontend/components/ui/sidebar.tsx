@@ -32,9 +32,9 @@ const menuItems = [
   { name: "Produk", icon: Sprout, href: "/produk" },
   { name: "Pesanan", icon: ShoppingCart, href: "/pesanan" },
   { name: "Transaksi", icon: CreditCard, href: "/transaksi" },
-  { name: "Data Panen", icon: ClipboardList, href: "/data-panen" },
-  { name: "Chat", icon: MessageCircle, href: "/chat" },
-  { name: "Feedback", icon: Undo2, href: "/feedback" },
+  // { name: "Data Panen", icon: ClipboardList, href: "/data-panen" },
+  // { name: "Chat", icon: MessageCircle, href: "/chat" },
+  // { name: "Feedback", icon: Undo2, href: "/feedback" },
   { name: "Insight", icon: Lightbulb, href: "/insight" },
 ];
 
@@ -199,4 +199,4 @@ export default function Sidebar() {
       </div>
     </aside>
   );
-}
+}
