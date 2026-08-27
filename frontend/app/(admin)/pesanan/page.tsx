@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Hourglass,
   PackageCheck,
@@ -14,6 +14,8 @@ import {
   Package,
   Trash2,
   X,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -27,6 +29,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showToast } from "@/lib/custom-toast";
+import { getTransaksi, createTransaksi, updateStatusTransaksi, validasiPembayaranTransaksi, getProdukPetani, createBukuKas, formatRupiah, formatTanggal, mapMetodePembayaran, mapStatusPesanan, type ApiTransaksi, type ApiProduk } from "@/lib/api";
+import { useAuthStore } from "@/lib/useAuthStore";
 
 // US-17: Status pesanan sesuai dokumen MVP
 type OrderStatus = "Menunggu" | "Disiapkan" | "Siap Diambil" | "Sedang Dikirim" | "Selesai";
@@ -36,11 +40,13 @@ type DeliveryMethod = "Pickup" | "Diantar";
 
 interface OrderItem {
   id: string;
+  rawId?: number;
   customer: string;
   date: string;
   total: string;
   status: OrderStatus;
   deliveryMethod: DeliveryMethod;
+  metode_pembayaran?: string; // nilai backend: cod | transfer_bank | qris
   alamat?: string;
   items?: { name: string; qty: string; price: string }[];
 }
@@ -70,6 +76,7 @@ const statusBadgeClass: Record<string, string> = {
   "Siap Diambil": "bg-blue-50 text-blue-600 border-blue-200",
   "Sedang Dikirim": "bg-indigo-50 text-indigo-600 border-indigo-200",
   Selesai: "bg-teal-50 text-teal-700 border-teal-200",
+  Dibatalkan: "bg-gray-100 text-gray-500 border-gray-200",
 };
 
 // Delivery method badge
@@ -79,6 +86,39 @@ const deliveryBadgeClass: Record<string, string> = {
 };
 
 let nextIdCounter = 12352;
+
+// Helper: map ApiTransaksi → OrderItem
+function mapApiToOrder(t: ApiTransaksi): OrderItem {
+  const statusMap: Record<string, OrderStatus> = {
+    pending: "Menunggu",
+    preparing: "Disiapkan",
+    processing: "Disiapkan",
+    shipping: "Sedang Dikirim",
+    shipped: "Sedang Dikirim",
+    completed: "Selesai",
+    cancelled: "Menunggu", // tampilkan sebagai Menunggu agar bisa dikelola ulang
+  };
+  const deliveryMap: Record<string, DeliveryMethod> = {
+    pickup: "Pickup",
+    delivery: "Diantar",
+  };
+  return {
+    id: t.kode_transaksi || `#${t.id}`,
+    rawId: t.id,
+    customer: t.user?.name ?? t.petani?.nama ?? "Pelanggan",
+    date: t.created_at ? formatTanggal(t.created_at) : "-",
+    total: formatRupiah(t.total_harga ?? 0),
+    status: statusMap[t.status_pesanan] ?? "Menunggu",
+    deliveryMethod: deliveryMap[t.metode_pengiriman] ?? "Pickup",
+    metode_pembayaran: t.metode_pembayaran, // simpan nilai mentah dari backend
+    alamat: t.user?.alamat,
+    items: t.items?.map((item) => ({
+      name: item.produk?.nama_barang ?? `Produk #${item.produk_id}`,
+      qty: `${item.jumlah ?? 1} kg`,
+      price: formatRupiah((item.harga_satuan ?? 0) * (item.jumlah ?? 1)),
+    })) ?? [],
+  };
+}
 
 const initialOrders: OrderItem[] = [
   {
@@ -150,7 +190,11 @@ const initialOrders: OrderItem[] = [
 ];
 
 export default function PesananPage() {
-  const [orders, setOrders] = useState<OrderItem[]>(initialOrders);
+  const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [timeFilter, setTimeFilter] = useState<"Semua" | "7 hari" | "30 hari">("Semua");
   const [statusFilter, setStatusFilter] = useState<"Semua Status" | "Menunggu" | "Disiapkan" | "Dalam Perjalanan" | "Selesai">("Semua Status");
@@ -164,16 +208,56 @@ export default function PesananPage() {
   const [confirmSelesaiOrder, setConfirmSelesaiOrder] = useState<OrderItem | null>(null);
   const [alasanTolak, setAlasanTolak] = useState("Stok Habis");
 
-  // Form State Catat Pesanan
+  // Form State Catat Pesanan (Offline / Walk-in / Direct store purchase)
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newOrderCustomer, setNewOrderCustomer] = useState("");
-  const [newOrderDeliveryMethod, setNewOrderDeliveryMethod] = useState<DeliveryMethod>("Pickup");
+  const [newOrderType, setNewOrderType] = useState<"walk_in" | "delivery">("walk_in");
+  const [newOrderPayment, setNewOrderPayment] = useState<"cash" | "qris" | "transfer_bank" | "cod">("cash");
+  const [newOrderStatus, setNewOrderStatus] = useState<OrderStatus>("Selesai");
   const [newOrderAlamat, setNewOrderAlamat] = useState("");
-  const [selectedCatalogItem, setSelectedCatalogItem] = useState("Bayam Murid Siswoyo");
+  const [selectedCatalogItem, setSelectedCatalogItem] = useState("Bayam Hijau Segar");
   const [itemQty, setItemQty] = useState("2");
-  const [addedItems, setAddedItems] = useState<{ name: string; qty: string; price: string }[]>([]);
+  const [addedItems, setAddedItems] = useState<{ name: string; qty: string; price: string; rawPrice?: number }[]>([]);
 
   const itemsPerPage = 5;
+
+  const fetchOrders = useCallback(async () => {
+    if (!token) {
+      setOrders([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const data = await getTransaksi(token);
+      if (Array.isArray(data) && data.length > 0) {
+        setOrders(data.map(mapApiToOrder));
+      } else {
+        setOrders([]);
+      }
+    } catch {
+      setFetchError("Gagal mengambil data pesanan dari server.");
+      setOrders([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token]);
+
+  const [availableProduks, setAvailableProduks] = useState<ApiProduk[]>([]);
+
+  useEffect(() => {
+    getProdukPetani(token ?? undefined, user?.id, user?.name).then((data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setAvailableProduks(data);
+        setSelectedCatalogItem(data[0].nama_barang);
+      }
+    }).catch(() => {});
+  }, [token, user?.id, user?.name]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((ord) => {
@@ -216,17 +300,33 @@ export default function PesananPage() {
   const countInTransit = orders.filter((o) => o.status === "Sedang Dikirim" || o.status === "Siap Diambil").length;
   const countSelesai = orders.filter((o) => o.status === "Selesai").length;
 
-  const updateOrderStatus = (id: string, newStatus: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
-    );
-    setSelectedOrder((prev) => {
-      if (prev && prev.id === id) {
-        return { ...prev, status: newStatus };
+  const updateOrderStatus = async (id: string, newStatus: OrderStatus, rawId?: number) => {
+    if (!token || !rawId) {
+      showToast("Gagal memperbarui status: Sesi autentikasi tidak valid atau ID pesanan tidak ditemukan.", "error");
+      return;
+    }
+
+    try {
+      let res: { message: string };
+      if (newStatus === "Selesai") {
+        res = await validasiPembayaranTransaksi(token, rawId);
+      } else {
+        let backendStatus: "preparing" | "shipping" | "completed" = "preparing";
+        if (newStatus === "Disiapkan") backendStatus = "preparing";
+        else if (newStatus === "Sedang Dikirim" || newStatus === "Siap Diambil") backendStatus = "shipping";
+
+        res = await updateStatusTransaksi(token, rawId, backendStatus);
       }
-      return prev;
-    });
-    showToast(`Status pesanan ${id} diperbarui menjadi "${newStatus}"`, "success");
+
+      setOrders((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+      );
+      setSelectedOrder((prev) => (prev && prev.id === id ? { ...prev, status: newStatus } : prev));
+      showToast(res.message || `Status pesanan ${id} berhasil diperbarui!`, "success");
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      showToast(error?.message ?? "Gagal memperbarui status pesanan di server", "error");
+    }
   };
 
   const handleAddItemToOrder = () => {
@@ -235,12 +335,15 @@ export default function PesananPage() {
       showToast("Jumlah harus berupa angka valid (minimal 1)!", "error");
       return;
     }
-    const unitPrice = 12500;
+
+    const matchProd = availableProduks.find((p) => p.nama_barang === selectedCatalogItem);
+    const unitPrice = matchProd ? matchProd.harga : 12500;
     const totalPriceNum = unitPrice * numericQty;
     const formattedPrice = `Rp ${totalPriceNum.toLocaleString("id-ID")}`;
+
     setAddedItems((prev) => [
       ...prev,
-      { name: selectedCatalogItem, qty: `${numericQty} kg`, price: formattedPrice },
+      { name: selectedCatalogItem, qty: `${numericQty} kg`, price: formattedPrice, rawPrice: unitPrice },
     ]);
     showToast(`Item "${selectedCatalogItem}" ditambahkan ke rincian pesanan`, "success");
   };
@@ -250,43 +353,127 @@ export default function PesananPage() {
     showToast("Item dihapus dari rincian pesanan", "success");
   };
 
-  const handleAddOrderSubmit = (e: React.FormEvent) => {
+  const handleAddOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (addedItems.length === 0) {
       showToast("Tambahkan minimal 1 produk ke rincian pesanan!", "error");
       return;
     }
 
-    const calculatedTotalNum = addedItems.reduce((acc, item) => {
-      const p = parseFloat(item.price.replace(/[^\d]/g, "")) || 0;
-      return acc + p;
+    const customerName = newOrderCustomer.trim() || "Pembeli Langsung (Walk-in)";
+    
+    // Hitung total harga
+    const grandTotalNum = addedItems.reduce((acc, item) => {
+      const qty = parseFloat(item.qty.replace(/[^\d.]/g, "")) || 1;
+      const unitPrice = item.rawPrice || 12500;
+      return acc + qty * unitPrice;
     }, 0);
 
-    const formattedTotal = `Rp ${calculatedTotalNum.toLocaleString("id-ID")}`;
-    const customerName = newOrderCustomer.trim() || "Customer Umum";
+    const itemSummaryStr = addedItems.map((i) => `${i.name} (${i.qty})`).join(", ");
+    let createdTxData: ApiTransaksi | undefined = undefined;
 
-    nextIdCounter++;
-    const order: OrderItem = {
-      id: `INV-${nextIdCounter}`,
+    if (token) {
+      // 1. Simpan data Pemasukan ke database (tabel buku_kas)
+      try {
+        await createBukuKas(token, {
+          tipe: "pemasukan",
+          nominal: grandTotalNum,
+          keterangan: `Penjualan toko (${customerName}): ${itemSummaryStr}`,
+          tanggal: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn("Simpan ke buku_kas db warning:", err);
+      }
+
+      // 2. Simpan Transaksi di database (tabel transaksis & transaksi_items)
+      try {
+        // Untuk setiap item, ambil produk yang benar-benar dipilih agar produk_id & petani_id akurat
+        const backendItems = addedItems.map((item) => {
+          const matchProd = availableProduks.find((p) => p.nama_barang === item.name);
+          const qty = parseFloat(item.qty.replace(/[^\d.]/g, "")) || 1;
+          return {
+            produk_id: matchProd?.id ?? availableProduks[0]?.id ?? 1,
+            jumlah: qty,
+          };
+        });
+
+        // Resolve petani_id dari produk yang benar-benar terpilih (bukan selalu [0])
+        // Jika user adalah petani, backend akan auto-resolve sehingga tidak perlu dikirim
+        const firstItemProd = availableProduks.find((p) => p.nama_barang === addedItems[0]?.name);
+        const resolvedPetaniId = firstItemProd?.petani_id ?? availableProduks[0]?.petani_id;
+
+        const res = await createTransaksi(token, {
+          // Hanya kirim petani_id untuk umkm; petani auto-resolve di backend
+          ...(user?.role !== "petani" && resolvedPetaniId ? { petani_id: resolvedPetaniId } : {}),
+          metode_pembayaran: newOrderPayment === "cash" ? "cod" : newOrderPayment,
+          metode_pengiriman: newOrderType === "walk_in" ? "pickup" : "delivery",
+          items: backendItems,
+        });
+
+        if (res.data) {
+          createdTxData = res.data;
+          // Hanya petani yang bisa memanggil updateStatus & validasiPembayaran
+          if (user?.role === "petani") {
+            if (newOrderStatus === "Selesai") {
+              await validasiPembayaranTransaksi(token, res.data.id).catch(() => {});
+            } else if (newOrderStatus === "Disiapkan") {
+              await updateStatusTransaksi(token, res.data.id, "preparing").catch(() => {});
+            }
+          }
+        }
+      } catch (err: unknown) {
+        const error = err as { message?: string };
+        showToast(error?.message ?? "Gagal menyimpan transaksi ke database", "error");
+        console.warn("Detail respon createTransaksi:", error);
+      }
+
+      // Refresh data pesanan asli dari backend agar tabel terupdate 100% dari DB!
+      await fetchOrders().catch(() => {});
+    }
+
+    const newOrderObj: OrderItem = {
+      id: createdTxData?.kode_transaksi || `INV-${Math.floor(10000 + Math.random() * 90000)}`,
+      rawId: createdTxData?.id,
       customer: customerName,
-      date: new Date().toLocaleDateString("id-ID"),
-      total: formattedTotal,
-      status: "Menunggu",
-      deliveryMethod: newOrderDeliveryMethod,
-      alamat: newOrderDeliveryMethod === "Diantar" ? newOrderAlamat.trim() : undefined,
-      items: addedItems,
+      date: formatTanggal(new Date().toISOString()),
+      total: formatRupiah(grandTotalNum),
+      status: newOrderStatus,
+      deliveryMethod: newOrderType === "walk_in" ? "Pickup" : "Diantar",
+      alamat: newOrderType === "walk_in" ? undefined : newOrderAlamat,
+      items: addedItems.map((i) => ({ name: i.name, qty: i.qty, price: i.price })),
     };
 
-    setOrders([order, ...orders]);
+    setOrders((prev) => {
+      const exists = prev.some((o) => o.id === newOrderObj.id || (o.rawId && o.rawId === newOrderObj.rawId));
+      if (exists) return prev;
+      return [newOrderObj, ...prev];
+    });
+
+    showToast(`Pesanan "${customerName}" berhasil dicatat & disimpan ke database!`, "success");
+
+    // Reset Form
     setIsAddOpen(false);
     setNewOrderCustomer("");
     setNewOrderAlamat("");
+    setNewOrderType("walk_in");
+    setNewOrderPayment("cash");
+    setNewOrderStatus("Selesai");
     setAddedItems([]);
-    showToast(`Pesanan ${order.id} berhasil dicatat!`, "success");
   };
 
   return (
     <div className="w-full space-y-6">
+      {/* Error Banner */}
+      {fetchError && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3">
+          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+          <p className="text-xs text-amber-700 font-medium flex-1">{fetchError}</p>
+          <button onClick={fetchOrders} className="text-xs font-bold text-amber-700 hover:underline shrink-0">
+            Coba lagi
+          </button>
+        </div>
+      )}
+
       {/* ── Stat Cards (Clickable Filter) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Menunggu */}
@@ -543,7 +730,7 @@ export default function PesananPage() {
               ) : (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-gray-400 text-xs font-medium">
-                    Tidak ada pesanan yang sesuai dengan filter.
+                    Belum ada data pesanan yang masuk untuk akun Anda.
                   </td>
                 </tr>
               )}
@@ -589,52 +776,93 @@ export default function PesananPage() {
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-emerald-300 ring-1 ring-black/5">
           <DialogHeader className="pb-3 border-b border-gray-100">
-            <DialogTitle className="text-lg font-bold text-gray-900">Catat Pesanan</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-gray-900">Catat Pesanan Toko / Walk-in</DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
-              Buat pesanan baru dan tambahkan rincian produk
+              Pencatatan transaksi langsung pelanggan yang datang ke toko maupun pesanan diantar
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleAddOrderSubmit} className="space-y-4 py-3 text-xs">
+            {/* Tipe Pembelian */}
             <div className="space-y-1.5">
-              <Label className="text-gray-700 font-semibold">Nama Customer</Label>
+              <Label className="text-gray-700 font-semibold block">Tipe Pembelian</Label>
+              <div className="grid grid-cols-2 gap-3 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewOrderType("walk_in");
+                    setNewOrderStatus("Selesai");
+                  }}
+                  className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer ${
+                    newOrderType === "walk_in"
+                      ? "bg-[#1B4332] text-white border-[#1B4332] shadow-xs"
+                      : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                  }`}
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>Langsung di Toko (Walk-in)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewOrderType("delivery");
+                    setNewOrderStatus("Disiapkan");
+                  }}
+                  className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer ${
+                    newOrderType === "delivery"
+                      ? "bg-[#1B4332] text-white border-[#1B4332] shadow-xs"
+                      : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                  }`}
+                >
+                  <Truck className="w-3.5 h-3.5" />
+                  <span>Diantar ke Alamat</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Nama Customer */}
+            <div className="space-y-1.5">
+              <Label className="text-gray-700 font-semibold">Nama Customer / Pembeli</Label>
               <Input
-                placeholder="Masukkan nama customer (opsional)"
+                placeholder="Contoh: Pembeli Toko / Pak Budi (Kosongkan = Pembeli Langsung)"
                 value={newOrderCustomer}
                 onChange={(e) => setNewOrderCustomer(e.target.value)}
                 className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-gray-700 font-semibold">Metode Pengambilan</Label>
-              <div className="flex items-center gap-4 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium">
-                  <input
-                    type="radio"
-                    name="deliveryMethod"
-                    value="Pickup"
-                    checked={newOrderDeliveryMethod === "Pickup"}
-                    onChange={() => setNewOrderDeliveryMethod("Pickup")}
-                    className="accent-[#1B4332]"
-                  />
-                  Ambil Sendiri (Pickup)
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium">
-                  <input
-                    type="radio"
-                    name="deliveryMethod"
-                    value="Diantar"
-                    checked={newOrderDeliveryMethod === "Diantar"}
-                    onChange={() => setNewOrderDeliveryMethod("Diantar")}
-                    className="accent-[#1B4332]"
-                  />
-                  Diantar Ke Alamat
-                </label>
+            {/* Metode Pembayaran & Status Pesanan */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-gray-700 font-semibold">Metode Pembayaran</Label>
+                <select
+                  value={newOrderPayment}
+                  onChange={(e) => setNewOrderPayment(e.target.value as any)}
+                  className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3 pr-8 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
+                >
+                  <option value="cash">Tunai / Cash (Bayar di Toko)</option>
+                  <option value="qris">QRIS (Scan Barcode)</option>
+                  <option value="transfer_bank">Transfer Bank</option>
+                  <option value="cod">COD (Bayar saat diantar)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-gray-700 font-semibold">Status Transaksi</Label>
+                <select
+                  value={newOrderStatus}
+                  onChange={(e) => setNewOrderStatus(e.target.value as OrderStatus)}
+                  className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3 pr-8 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
+                >
+                  <option value="Selesai">Selesai (Lunas & Langsung Diambil)</option>
+                  <option value="Disiapkan">Disiapkan (Siapkan Dulu)</option>
+                  <option value="Menunggu">Menunggu Pembayaran</option>
+                </select>
               </div>
             </div>
 
-            {newOrderDeliveryMethod === "Diantar" && (
+            {/* Alamat Pengiriman jika 'delivery' */}
+            {newOrderType === "delivery" && (
               <div className="space-y-1.5">
                 <Label className="text-gray-700 font-semibold">Alamat Pengiriman</Label>
                 <Input
@@ -646,9 +874,10 @@ export default function PesananPage() {
               </div>
             )}
 
+            {/* Dynamic Product Selection */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <Label className="text-gray-700 font-semibold">Nama Produk</Label>
+                <Label className="text-gray-700 font-semibold">Nama Produk Sayuran / Buah</Label>
                 <span className="text-[11px] font-semibold text-red-500">Wajib</span>
               </div>
               <select
@@ -656,26 +885,38 @@ export default function PesananPage() {
                 onChange={(e) => setSelectedCatalogItem(e.target.value)}
                 className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-3.5 pr-10 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-[#1B4332]/20 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%234b5563%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_14px_center] bg-no-repeat cursor-pointer"
               >
-                <option value="Bayam Murid Siswoyo">Bayam Murid Siswoyo</option>
-                <option value="Bayam Organik Asal Jember">Bayam Organik Asal Jember</option>
-                <option value="Wortel Penyembah Durian">Wortel Penyembah Durian</option>
-                <option value="Kangkung Segar Hydro">Kangkung Segar Hydro</option>
-                <option value="Sawi Hijau Organik">Sawi Hijau Organik</option>
-                <option value="Tomat Merah Super">Tomat Merah Super</option>
+                {availableProduks.length > 0 ? (
+                  availableProduks.map((p) => (
+                    <option key={p.id} value={p.nama_barang}>
+                      {p.nama_barang} — {formatRupiah(p.harga)}/kg (Stok: {p.stok} kg)
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Bayam Hijau Segar">Bayam Hijau Segar — Rp 12.500/kg</option>
+                    <option value="Tomat Merah Super">Tomat Merah Super — Rp 11.500/kg</option>
+                    <option value="Wortel Manis Lokal">Wortel Manis Lokal — Rp 10.000/kg</option>
+                    <option value="Kangkung Segar Hydro">Kangkung Segar Hydro — Rp 8.000/kg</option>
+                    <option value="Sawi Hijau Organik">Sawi Hijau Organik — Rp 9.000/kg</option>
+                    <option value="Cabai Rawit Merah">Cabai Rawit Merah — Rp 35.000/kg</option>
+                    <option value="Brokoli Hijau Organik">Brokoli Hijau Organik — Rp 18.500/kg</option>
+                    <option value="Pak Choy Hijau">Pak Choy Hijau — Rp 12.000/kg</option>
+                  </>
+                )}
               </select>
             </div>
 
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1 space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <Label className="text-gray-700 font-semibold">Jumlah</Label>
+                  <Label className="text-gray-700 font-semibold">Jumlah (Kg)</Label>
                   <span className="text-[11px] font-semibold text-red-500">Wajib</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
                     min="1"
-                    placeholder="Masukkan jumlah"
+                    placeholder="Masukkan jumlah kg"
                     value={itemQty}
                     onChange={(e) => setItemQty(e.target.value)}
                     className="h-10 rounded-xl border-gray-200 focus:ring-2 focus:ring-[#1B4332]/20"
@@ -696,14 +937,30 @@ export default function PesananPage() {
 
             {/* Rincian Produk Section */}
             <div className="pt-4 border-t border-gray-100 space-y-3">
-              <h4 className="font-bold text-gray-900 text-xs">Rincian Produk</h4>
+              <h4 className="font-bold text-gray-900 text-xs flex items-center justify-between">
+                <span>Rincian Produk ({addedItems.length} item)</span>
+                {addedItems.length > 0 && (
+                  <span className="text-[#1B4332] font-bold">
+                    Total: {formatRupiah(
+                      addedItems.reduce((acc, i) => {
+                        const qty = parseFloat(i.qty.replace(/[^\d.]/g, "")) || 1;
+                        const unitPrice = i.rawPrice || 12500;
+                        return acc + qty * unitPrice;
+                      }, 0)
+                    )}
+                  </span>
+                )}
+              </h4>
+
               {addedItems.length > 0 ? (
                 <div className="space-y-2 bg-gray-50/70 p-3.5 rounded-xl border border-gray-100">
                   {addedItems.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-100 last:border-0">
                       <div>
                         <p className="font-semibold text-gray-800 text-xs">{item.name}</p>
-                        <p className="text-[11px] text-gray-500">Rp 12.500 x {item.qty.replace(/[^\d.]/g, "")}</p>
+                        <p className="text-[11px] text-gray-500">
+                          {formatRupiah(item.rawPrice || 12500)} x {item.qty}
+                        </p>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-gray-900 text-xs">{item.price}</span>
@@ -720,7 +977,9 @@ export default function PesananPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 italic text-center py-2">Belum ada produk ditambahkan</p>
+                <p className="text-xs text-gray-400 italic text-center py-3 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                  Belum ada produk ditambahkan ke rincian pesanan.
+                </p>
               )}
             </div>
 
@@ -771,7 +1030,9 @@ export default function PesananPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 font-medium">Metode Pembayaran</span>
-                    <span className="font-bold text-gray-900">Transfer Virtual Account</span>
+                    <span className="font-bold text-gray-900">
+                      {mapMetodePembayaran(selectedOrder.metode_pembayaran ?? "-")}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 font-medium">Status Pesanan</span>
@@ -826,44 +1087,55 @@ export default function PesananPage() {
                 </div>
               </div>
 
-              {/* Action transitions (Fixed for Pickup vs Diantar) */}
-              <div className="pt-3 border-t border-gray-100 flex gap-2">
-                {selectedOrder.status === "Menunggu" && (
-                  <>
+              {/* Action transitions — hanya petani yang dapat mengubah status pesanan */}
+              {user?.role === "petani" ? (
+                <div className="pt-3 border-t border-gray-100 flex gap-2">
+                  {selectedOrder.status === "Menunggu" && (
+                    <>
+                      <Button
+                        onClick={() => setConfirmTolakOrder(selectedOrder)}
+                        className="flex-1 h-9 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
+                      >
+                        Tolak Pesanan
+                      </Button>
+                      <Button
+                        onClick={() => setConfirmTerimaOrder(selectedOrder)}
+                        className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
+                      >
+                        Terima Pesanan
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Transisi status sesuai metode pengiriman */}
+                  {selectedOrder.status === "Disiapkan" && (
                     <Button
-                      onClick={() => setConfirmTolakOrder(selectedOrder)}
-                      className="flex-1 h-9 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
-                    >
-                      Tolak Pesanan
-                    </Button>
-                    <Button
-                      onClick={() => setConfirmTerimaOrder(selectedOrder)}
+                      onClick={() => setConfirmKirimOrder(selectedOrder)}
                       className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
                     >
-                      Terima Pesanan
+                      {selectedOrder.deliveryMethod === "Pickup" ? "Siapkan untuk Diambil" : "Kirim Produk"}
                     </Button>
-                  </>
-                )}
+                  )}
 
-                {/* Fixed status transition based on deliveryMethod */}
-                {selectedOrder.status === "Disiapkan" && (
-                  <Button
-                    onClick={() => setConfirmKirimOrder(selectedOrder)}
-                    className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
-                  >
-                    {selectedOrder.deliveryMethod === "Pickup" ? "Siapkan untuk Diambil" : "Kirim Produk"}
-                  </Button>
-                )}
-
-                {(selectedOrder.status === "Sedang Dikirim" || selectedOrder.status === "Siap Diambil") && (
-                  <Button
-                    onClick={() => setConfirmSelesaiOrder(selectedOrder)}
-                    className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
-                  >
-                    Konfirmasi Selesai
-                  </Button>
-                )}
-              </div>
+                  {(selectedOrder.status === "Sedang Dikirim" || selectedOrder.status === "Siap Diambil") && (
+                    <Button
+                      onClick={() => setConfirmSelesaiOrder(selectedOrder)}
+                      className="flex-1 h-9 bg-[#1B4332] hover:bg-[#032e21] text-white rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
+                    >
+                      Konfirmasi Selesai
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                // UMKM hanya bisa melihat detail, tidak bisa mengubah status
+                selectedOrder.status !== "Selesai" && (
+                  <div className="pt-3 border-t border-gray-100">
+                    <p className="text-[11px] text-gray-400 italic text-center">
+                      Perubahan status pesanan dikelola oleh pihak toko / petani.
+                    </p>
+                  </div>
+                )
+              )}
             </div>
 
             <DialogFooter className="pt-3">
@@ -903,7 +1175,7 @@ export default function PesananPage() {
               </Button>
               <Button
                 onClick={() => {
-                  updateOrderStatus(confirmTerimaOrder.id, "Disiapkan");
+                  updateOrderStatus(confirmTerimaOrder.id, "Disiapkan", confirmTerimaOrder.rawId);
                   setConfirmTerimaOrder(null);
                 }}
                 className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white font-semibold text-xs rounded-xl shadow-xs"
@@ -998,7 +1270,7 @@ export default function PesananPage() {
               <Button
                 onClick={() => {
                   const targetStatus: OrderStatus = confirmKirimOrder.deliveryMethod === "Pickup" ? "Siap Diambil" : "Sedang Dikirim";
-                  updateOrderStatus(confirmKirimOrder.id, targetStatus);
+                  updateOrderStatus(confirmKirimOrder.id, targetStatus, confirmKirimOrder.rawId);
                   setConfirmKirimOrder(null);
                 }}
                 className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white font-semibold text-xs rounded-xl shadow-xs"
@@ -1035,7 +1307,7 @@ export default function PesananPage() {
               </Button>
               <Button
                 onClick={() => {
-                  updateOrderStatus(confirmSelesaiOrder.id, "Selesai");
+                  updateOrderStatus(confirmSelesaiOrder.id, "Selesai", confirmSelesaiOrder.rawId);
                   setConfirmSelesaiOrder(null);
                 }}
                 className="flex-1 h-10 bg-[#1B4332] hover:bg-[#032e21] text-white font-semibold text-xs rounded-xl shadow-xs"

@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/petani/profile', [PetaniController::class, 'updateProfile']);
     Route::post('/produk', [ProdukController::class, 'store']);
     Route::put('/produk/{id}', [ProdukController::class, 'update']);
+    Route::post('/produk/{id}/gambar', [ProdukController::class, 'uploadGambar']); // Upload/replace gambar produk
     Route::delete('/produk/{id}', [ProdukController::class, 'destroy']);
 
     // Transaksi / Orders

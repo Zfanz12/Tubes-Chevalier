@@ -63,6 +63,14 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [noHp, setNoHp] = useState("");
   const [role, setRole] = useState<Role>("umkm");
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlHp = params.get("no_hp");
+      if (urlHp) setNoHp(urlHp);
+    }
+  }, []);
   const [otp, setOtp] = useState("");
   const [otpPreview, setOtpPreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -94,6 +102,19 @@ export default function RegisterPage() {
         method: "POST",
         body: { name, no_hp: noHp, role },
       });
+
+      if (typeof window !== "undefined") {
+        const savedStr = localStorage.getItem("harvesta_registered_phones") || "[]";
+        try {
+          const arr = JSON.parse(savedStr);
+          if (Array.isArray(arr) && !arr.includes(noHp.trim())) {
+            arr.push(noHp.trim());
+            localStorage.setItem("harvesta_registered_phones", JSON.stringify(arr));
+          }
+        } catch {
+          localStorage.setItem("harvesta_registered_phones", JSON.stringify([noHp.trim()]));
+        }
+      }
 
       setOtpPreview(res.otp_preview ?? null);
       setStep("otp");
